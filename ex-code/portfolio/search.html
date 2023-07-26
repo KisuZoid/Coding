@@ -1,0 +1,138 @@
+<!--made by kislay anand-->
+<!doctype html>
+<html>
+<head>
+<meta name ="viewport" content="width="devise-width,initial-scale=1">
+
+<style>
+body{
+        font-family:"algerian", sans-serif;
+}
+p{
+font-family:algerian;
+border-style:dashed;
+color:black;
+}
+.sidenav{
+              height:100%;
+              width:0;
+              position:fixed;
+              z-index:1;
+              top:0;
+              left:0;
+              background-color:gray;
+              overflow-x:hidden;
+              transition:2s;
+              padding-top:60px;
+              TEXT-SHADOW:5px 10px 2px #111;
+              opacity:5;
+}
+.sidenav a{
+                 padding:8px 8px 8px 32px;
+                 text-decoration:none;
+                 font-size:25px:
+                 color:pink;
+                 display:block;
+                 transition:2s;
+}
+
+.sidenav a:hover , .offcanvas a:focus{
+                           color:#111; 
+}
+.sidenav .closebtn{
+                           position:absolute;
+                           top:0px;
+                           right:25px;
+                           font-size:36px;
+                           margin-left:50px;
+}
+@media screen and (max-height:450px;)
+{
+             .sidenav {padding-top:15px;}
+             .sidenav a {font-size:18px;}
+}
+ul{
+    list-style-type:none;
+    display:inline;
+    margin:0;
+    padding:0;
+    background-color:black;
+    text-align:center;
+}
+a{
+    display:block;
+    text-decoration:none;
+    padding:8px;
+    background-color:gray;
+}
+li{
+   float:right;
+} 
+li a{
+      display:block;
+      color:white;
+      text-align:center;
+      padding:25px  27px;
+      text-decoration:none;
+      text-shadow:5px 10px 2px #111;
+      opacity:0.5;
+}
+li a:hover{  
+                 background-color:pink;
+}
+</style>
+</head>
+<body>
+<div style="background-color:skyblue;padding:0px;">
+<h1 align="center">Alkap-ro</h1>
+<div id="mysidenav" class="sidenav">
+<a href="javascript:void(0)"class="closebtn" onclick="closeNAV()">&times;</a>
+      <a href="Hawkins.html">Stephen</a>
+      <a href="Newton.html">Newton</a>
+       <a href="tesla.html">Nikola Tesla</a>
+      <a href="Einstein.html">Albert Einstein</a>
+</div>
+<span style="font-size:30px;cursor:pointer;"
+                       onclick="openNAV()">&#9776;</span>
+
+<script>
+function openNAV( ){
+
+document.getElementById("mysidenav").style.width="250px";
+}
+function closeNAV( ){
+
+document.getElementById("mysidenav").style.width="0";
+}
+</script>
+
+<nav>
+<ul>
+<li><a href="home.html">Home</a></li>
+<li><a href="movie.html">movie</a></li>
+<li><a href="search.html">search engine</a></li>
+<li><a href="gallery.html">gallery</a></li>
+</ul>
+</nav>
+<br/>
+<br/>
+<br/>
+<h2 align="center">search:-</h2>
+</div>
+<div align="center">
+<h2 id="kislay"
+style="font-size:65px;"><font
+color="blue">K</font><font
+color="yellow">I</font><font
+color="green">S</font><font
+color="orange">L</font><font
+color="red">A</font><font
+color="skyblue">Y</font></h2>
+<form align="center" action="https://www.google.com/search" method="get">
+<input type="search" class="search" name="q" size="25" maxlength="180" placeholder="search or type URL"/><br/>
+<input type="submit" value="search"/>
+</form>
+<img src="https://s9.postimg.cc/4gapfs4wv/download.png" height="150px"width="150px" border="0px"/>
+</div>
+</body>
+</html>
