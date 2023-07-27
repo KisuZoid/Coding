@@ -1,10 +1,17 @@
 #ask user for their name
 name = input("What is your name? ")
-name = name.title().strip()
+name = "Hello, " + name.title().strip() + "!"
 
 #say hello to the user
-print("Hello, ",name)
+print(name)
 print("How are you? ")
+
+"""
+name = name.title().strip()
+print("Hello,",name + "!")
+
+print("Hello, " + name + "!")
+"""
 
 
 #name is variable here for input() function.
