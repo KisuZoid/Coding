@@ -2,11 +2,12 @@
 name = input("What is your name? ")
 name = name.title().strip()
 
+#say hello to the user
 print("Hello, ",name)
 print("How are you? ")
 
 
-#x is variable here for input() function.
+#name is variable here for input() function.
 #input() is a function that takes input.
 #print() is the function for output to the screen.
 #title() is a function that make first letter of every word capital. 
