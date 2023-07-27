@@ -1,5 +1,7 @@
+#ask user for their name
 name = input("What is your name? ")
 name = name.title().strip()
+
 print("Hello, ",name)
 print("How are you? ")
 
