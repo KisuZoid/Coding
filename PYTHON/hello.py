@@ -1,6 +1,6 @@
-x = input("What is your name? ")
-x = x.title().strip()
-print("Hello, ",x)
+name = input("What is your name? ")
+name = name.title().strip()
+print("Hello, ",name)
 print("How are you? ")
 
 
