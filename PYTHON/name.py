@@ -1,9 +1,14 @@
 name = input("What is your name? ").title().strip()
 print("Hello, ",end = "")
-print(name)
+
+# split user's name into first name and last name
+first, last = name.split(" ")
+print(first,"\n")
+
 #or
+
 print(f"Hello, {name}")
-print("MY, \"friend\" " + "How are you?",name)
+print("MY, \"friend\" " + "How are you?",first)
 
 
 # In python documentation, there is end="\n" in print function that makes a new line after the output.
@@ -17,3 +22,7 @@ print("MY, \"friend\" " + "How are you?",name)
 #or 
 # use print("MY, \"friend\"") "\" back slace is a scaping character
 #f in line 6, indicate format that whatever in curl bracet is special string
+#print(first) gonna print the first input of name
+#first, last is variable indicate first and second input value for name that splitted by a single blank
+#split(" ")single blank between quotes incicate the single blank in input of first and last words for name variable, extra blank/input gives error. 
+#split() gonna return a sequence of values ideally a first name or a last name
