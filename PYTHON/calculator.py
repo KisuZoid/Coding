@@ -44,4 +44,4 @@ print("Result:",z)
 #int is for integers
 #in numbers python supports operation like  +,-,%,*
 # + is for add | - is for subtract | * is for multiplication
-# % is modulo which is for taking remiender
+# % is modulo which is for taking reminder
