@@ -21,7 +21,7 @@ print("MY, \"friend\" " + "How are you?",first)
 #to fir that error , print('Hello, "friend"') can be used
 #or 
 # use print("MY, \"friend\"") "\" back slace is a scaping character
-#f in line 6, indicate format that whatever in curl bracet is special string
+#f in line 10, indicate format that whatever in curl bracket is special string
 #print(first) gonna print the first input of name
 #first, last is variable indicate first and second input value for name that splitted by a single blank
 #split(" ")single blank between quotes incicate the single blank in input of first and last words for name variable, extra blank/input gives error. 
