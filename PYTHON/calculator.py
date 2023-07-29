@@ -34,11 +34,6 @@ print("Result:",z)
 
 
 
-
-
-
-
-
 #str is class for strings
 #in case of string + is for combining to variables
 #int is for integers
