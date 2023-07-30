@@ -4,13 +4,13 @@ y = int(input("What's y? "))
 if x < y:
     print("x is less than y")
 
-if x > y:
+elif x > y:
     print("x is greater than y")
 
-if x == y:
+else:
     print("x is equal to y")
 
-
+# elif is for else if. it makes program faster a bit coz once we got answer, running of code will stop there(no need to run complete code).
 
 #syntax :
 # > means greater that
