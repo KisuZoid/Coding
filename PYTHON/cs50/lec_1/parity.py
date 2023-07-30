@@ -6,11 +6,24 @@ def main():
         print("odd")
 
 def is_even(n):
+    return (n % 2 == 0) #parentheses need not be there as well. it just depend upon user and functionality.
+
+#or 
+
+"""
+def is_even(n):
+    return True if n % 2 == 0 else False
+"""
+
+#or
+    
+"""
+def is_even(n):
     if n % 2 == 0:
         return True
     else:
         return False
-
+"""
 main()
 
 
