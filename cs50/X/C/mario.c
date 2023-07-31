@@ -4,12 +4,13 @@
 int main(void)
 {
     //do while loop
-    int n;
+    int n;//it is a deceleration that there is a integer n.
     do
     {
         n=get_int("length? ");
     }
     while (n<1);
+//if value of n typed less than 1 then do  n=get_int("length? "); func. once again.
 
     int m;
     do
