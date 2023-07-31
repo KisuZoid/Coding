@@ -19,3 +19,9 @@ int main(void)
         printf("x is equal to y\n");
     }
 }
+
+/*
+x>y x greater than y
+x<y x less than y
+x==y x equals to y
+*/
