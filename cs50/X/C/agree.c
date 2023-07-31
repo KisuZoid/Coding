@@ -14,3 +14,10 @@ int main(void)
         printf("Not agreed. \n");
     }
 }
+
+/*
+*char denotes character(single character)
+*get_char takes input in char
+* || denotes or
+* == means equal to 
+*/
