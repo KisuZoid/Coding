@@ -8,3 +8,4 @@ int main(void)
     int z=get_int("How much you got in 12th? ");
     printf("hello, %s %s!\n %i%% is in your 12th\n", x, y, z);
 }
+
