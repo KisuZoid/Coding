@@ -3,6 +3,7 @@ def main():
     hello()
     hello(name)
 
+#default value of hello() is Hello, world as to is related to world
 #main is our main funtion
 
 def hello(to="world"):

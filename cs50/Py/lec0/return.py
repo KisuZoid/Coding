@@ -5,7 +5,7 @@ def main():
 def square(n):
     return pow(n, 2)
 
-#return keyword returns a value 
+#return keyword returns a value to  the function
 
 main()
 
