@@ -1,3 +1,13 @@
+def main():
+    meow(3)
+
+def meow(n):
+    for _ in range(n):
+        print("meow")
+
+
+
+'''
 #infine loop
 while True:
     n = int(input("What's n? "))
@@ -14,3 +24,4 @@ while True:
 
 for _ in range(n):
     print("meow")
+'''
