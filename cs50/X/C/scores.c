@@ -39,3 +39,14 @@ float average(int length, int num[])
     }
     printf("Average: %f\n",(scores[0]+scores[1]+scores[2]) / (float) 3);
 }*/
+
+
+/*
+bool : 1 byte
+int : 4 bytes
+long : 8 bytes
+float : 4 bytes
+double : 8 bytes
+char : 1 byte
+string : ? bytes (? means depends upon size of string)
+*/
