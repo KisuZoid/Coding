@@ -5,6 +5,7 @@ mkdir : make directory
 mv : move/rename
 rm : remove
 rmdir : remove directory
+cd .. : previous directory
 
 
 for using mingw, let program is called program.c
