@@ -1,7 +1,49 @@
 #include <stdio.h>
 #include "cs50.h"
 #include <string.h>
+#include <ctype.h>
 
+int main(void)
+{
+    string s = get_string("Before: ");
+    printf("After: ");
+
+    for (int i = 0, n = strlen(s); i < n; i++) //this little decleration of n makes program faster coz length is defined so that computer has no need to check length of string each time for i < n.
+    {
+        //this is how do i check something is in lower case and force it to be in upper case.
+            printf("%c", toupper(s[i]));//toupper takes character as input and just make it uppercase i.e it does the math itself.
+    }
+    printf("\n");
+}
+
+
+
+/*
+int main(void)
+{
+    string s = get_string("Before: ");
+    printf("After: ");
+
+    for (int i = 0; i < strlen(s); i++)
+    {
+        //this is how do i check something is in lower case and force it to be in upper case.
+        if (islower(s[i])) //islower & toupper is the ctype library thing
+        {
+            printf("%c", toupper(s[i]));//toupper takes character as input and just make it uppercase i.e it does the math itself.
+        }
+        else
+        {
+            printf("%c", s[i]);
+        }
+    }
+    printf("\n");
+}
+*/
+
+
+
+
+/*
 int main(void)
 {
     string s = get_string("Before: ");
@@ -23,3 +65,4 @@ int main(void)
     }
     printf("\n");
 }
+*/
