@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "cs50.h"
 
+//array : a method of clubbing multiple entities of similar tyoe into a large group.
+
 const int N=3;
 
 float average(int length, int num[]);
