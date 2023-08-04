@@ -32,6 +32,7 @@ float average(int length, int num[])
 
 
 //int scores[3] another meaning is that we want 4 * 3 bytes in total. 4 bytes indicate int keyword and 3 is our input size of array called scores.
+//numbering for array will starts from 0 and also generally in Comp. Sc. numbering starts from 0. 
 
 /*
 int main(void)
