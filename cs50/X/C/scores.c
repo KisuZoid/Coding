@@ -11,7 +11,7 @@ float average(int length, int num[]);
 int main(void)
 {
     int N = get_int("Enter Number of scores want to average? ");
-    int scores[N]; // means a array called scores of size N(N in number) which is in integer
+    int scores[N]; // means a array called scores of size N(N in number) each of which is in integer
     for(int i=0; i<N; i++)
     {
         scores[i]=get_int("Scores: ");
@@ -31,7 +31,7 @@ float average(int length, int num[])
 }
 
 
-
+//int scores[3] another meaning is that we want 4 * 3 bytes in total. 4 bytes indicate int keyword and 3 is our input size of array called scores.
 
 /*
 int main(void)
