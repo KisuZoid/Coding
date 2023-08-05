@@ -1,0 +1,44 @@
+let we have to find 10,20,30,40,50,60...n coins/numbers in n rooms which are in series and all of them are door locked, and we can open one room at a time only.
+
+pseudocode:
+
+Algorithm for solving this:
+{
+    Linear search:  O(n)
+    {
+        for each room(door) from left to right(in a fix linear direction) | numbers are randomly arranged behind the doors no fixed pattern.
+        
+        for i from 0 to n-1
+            if 50 is behind door[i]
+                return true
+            else
+                return false
+    }
+
+    Binary search:  O(log n)
+    {
+        for a fix arranged order of numbers behind each doors(assending or decending or some short of fixed pattern) | in binary search we can check both in left and right direction.
+
+        if no doors left
+            return false
+        if 50 is behind doors[middle] 
+            return true
+        else if 50 < dooes[middle]
+            search doors[0] through doors[middle -1]
+        else if 50 > doors[middle]
+            search doors[middle + 1] through doors[n-1]
+    }
+}
+
+
+
+
+
+
+
+O() (capital O) is denotes the rate of solving problems. (O means order or upper bound(i.e. max. step required))
+O(n*n)>O(n*log n)>O(n)>O(log n)>O(1) time taken/rate of solving problem. O(1) means solve in 1 order step, O(n) means solve in n order steps. lower the order of solving the ques, greater will be algorithm.
+
+"omega" greek alphabet used for denoting lower bound on rate of solving.
+
+if algorithm have same upper and lower bound then "theta" greek alphabet is used for denoting the rate of such algo. 
