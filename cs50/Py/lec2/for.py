@@ -2,6 +2,7 @@
 for _ in range(3):
     print("meow")
 #range(n) function gives a range of values and here the range is n and starts from 0 till n-1. n indicate n no. of values. 
+#range input is a integer value.
 # variable _ is a kind of variable that used when wwe not concern about name of variable.
 
 """
