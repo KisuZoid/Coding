@@ -1,3 +1,4 @@
+#6
 x = float(input("x: "))
 y = float(input("y: "))
 
@@ -5,7 +6,7 @@ z = x/y
 print(f"{z:,.2f}")
 #.2f here f is for float value and .2 shows the value till round off after decimal
 
-#4,5 line code is same as below
+#5,6 line code is same as below
 """
 z = round(x / y, 2)
 print(f"{z:,}")
