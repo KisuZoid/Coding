@@ -1,6 +1,9 @@
-#List
+#List(count starts from 0)
 
+students = ["Hermione", "Harry", "Ron"] #students is a variable for list of 3 student.
+#if we want to show particular student let say Hermione so use variable name and position of hermione in sq. bracket. i.e. 0 in this case. 
 
+print(students[0])
 
 
 
