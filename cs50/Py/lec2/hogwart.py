@@ -1,10 +1,18 @@
 #List(count starts from 0)
 
+#len is funtion in python that tells the length of a list in integeral value in pyhton. 
+students = ["Hermione", "Harry", "Ron"]
+
+for i in range(len(students)):
+    print(i + 1, students[i]) #i give the numeric position to values of students list, as list starts from 0 , so we add 1 for convinience, so that counting starts from 1.
+
+
+'''
 students = ["Hermione", "Harry", "Ron"]
 
 for s in students:
-    print(s) # s is a variable denotes values of students variable. and in python it automatically itterate hermione 1st and continue for next and next values as well. 
-
+    print(s) # s is a variable denotes values in students variable. and in python it automatically initiate(hermione 1st and continue for next and next values as well.) 
+'''
 
 """
 students = ["Hermione", "Harry", "Ron"] #students is a variable for list of 3 student.
@@ -13,12 +21,6 @@ students = ["Hermione", "Harry", "Ron"] #students is a variable for list of 3 st
 print(students[0])
 print(students)
 """
-
-
-
-
-
-
 
 
 #List and Array both are mutable and store ordered items.
