@@ -1,3 +1,4 @@
+//6
 //extention of mario
 #include <stdio.h>
 #include "cs50.h"
