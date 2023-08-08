@@ -1,3 +1,4 @@
+#7
 #tip calculator
 #dollar_to_float, which accept a str as input as formate $##.##, where # is a decimal digit, remove $ and return the amount as a float i.e. $50.00 means 50.0
 #percent_to_float, which accept a str as input as formate ##%, where # is a decimal digit, remove % and return the percentage as a float i.e. 15% means 0.15

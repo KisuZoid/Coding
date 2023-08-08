@@ -1,3 +1,4 @@
+#6
 students = [
     {"name": "Hermione", "house": "Garud Dwar", "patronus": "Otter"},
     {"name": "Harry", "house": "Garud Dwar", "patronus": "Stag"},
