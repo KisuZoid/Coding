@@ -14,4 +14,6 @@ or search on internet :
 docs.python.org/3/library/random.html
 
 import keyword in python allows to import function from the module.
+
+from is keyword that allows to import a specific funtion.
 }
