@@ -2,18 +2,28 @@ Exceptions,Debugging
 
 Libraries,Style
 
-Library:
+module:
 {
-Python support share code with others or across your own projects, and it does so by the way called "modules". 
+    Python support share code with others or across your own projects, and it does so by the way called "modules". 
 
-modules is just a library that has one or more fuction built into it.
+    modules is just a library that has one or more fuction built into it.
+}
 
-python comes with a library called "random" library It is already in python intrepreter, with named as random.py 
+random:
+{
+    python comes with a library called "random" library It is already in python intrepreter, with named as random.py 
 
-or search on internet : 
-docs.python.org/3/library/random.html
+    or search on internet : 
+    docs.python.org/3/library/random.html
 
-import keyword in python allows to import function from the module.
+    import keyword in python allows to import function from the module.
 
-from is keyword that allows to import a specific funtion.
+    from is keyword that allows to import a specific funtion.
+}
+
+statistics:
+{
+    python comes with statistics library as well. which is in python interpreter.
+
+    url: docs.python.org/3/library/statistics.html
 }
