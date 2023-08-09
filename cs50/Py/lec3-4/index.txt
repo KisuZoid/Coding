@@ -9,7 +9,7 @@ module:
     modules is just a library that has one or more fuction built into it.
 }
 
-random:
+random: for placing randomness 
 {
     python comes with a library called "random" library It is already in python intrepreter, with named as random.py 
 
@@ -21,9 +21,16 @@ random:
     from is keyword that allows to import a specific funtion.
 }
 
-statistics:
+statistics: for mathematical operation
 {
     python comes with statistics library as well. which is in python interpreter.
 
     url: docs.python.org/3/library/statistics.html
+}
+
+sys: for system related things
+{
+    this module use for command and sys. retated things.
+
+    url: docs.python.org/3/library/sys.html
 }
