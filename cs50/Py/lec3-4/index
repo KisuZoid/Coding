@@ -1,3 +1,17 @@
 Exceptions,Debugging
 
 Libraries,Style
+
+Library:
+{
+Python support share code with others or across your own projects, and it does so by the way called "modules". 
+
+modules is just a library that has one or more fuction built into it.
+
+python comes with a library called "random" library It is already in python intrepreter, with named as random.py 
+
+or search on internet : 
+docs.python.org/3/library/random.html
+
+import keyword in python allows to import function from the module.
+}
