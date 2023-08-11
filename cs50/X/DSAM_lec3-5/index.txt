@@ -34,6 +34,7 @@ Sorting: //let total n element
 //there is no meaning of comparision by self. so we have to compare in n-1 element only.
 {
     Selection Sort:
+    {
         for i from 0 to n-1
             find smallest number between numbers[i] and numbers[n-1]
             swap smallest number with numbers[i] 
@@ -43,8 +44,10 @@ Sorting: //let total n element
         n(n-1)/2 // for large n, order will be n^2.
         O(n*n) & omega(n*n)
         theta(n*n)
+    }
 
     Bubble Sort: 
+    {
         repeat n-1 times  
             for i from 0 to n-2  //as we taking 2 elements in every count means if i = n-2 then i+1 = n-1 that completes our search so we consider till n-2 only in place of n-1.
                 if numbers[i] and numbers[i+1] out of order
@@ -55,6 +58,17 @@ Sorting: //let total n element
         (n-1) * (n-1)
         n^2 - 2n + 1 for larger value of n, it become order of n^2 i.e. O(n*n)
         omega for this is "n" i.e omega(n)
+    }
+    
+    merge sort:
+    {
+        if only one number
+            Quit
+        else
+            sort left half of numbers
+            sort right half of numbers
+            merge sorted halves
+    }
 }
 
 Recursion: (the ability of a function to call itself.)
