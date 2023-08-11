@@ -1,3 +1,4 @@
+#8
 def main():
     print_square(3)
 
