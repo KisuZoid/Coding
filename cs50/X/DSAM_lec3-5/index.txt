@@ -30,6 +30,18 @@ Algorithm for solving this:
     }
 }
 
+Sorting:
+{
+    Selection Sort:
+
+    Bubble Sort:
+
+}
+
+Recursion:
+{
+    
+}
 
 
 
