@@ -30,17 +30,45 @@ Algorithm for solving this:
     }
 }
 
-Sorting:
+Sorting: //let total n element
+//there is no meaning of comparision by self. so we have to compare in n-1 element only.
 {
     Selection Sort:
+        for i from 0 to n-1
+            find smallest number between numbers[i] and numbers[n-1]
+            swap smallest number with numbers[i] 
+            //through each swap, we decrease the no. of element to swap by 1. so for 1st time there is n-1, for second n-2 & so on and for last 1
 
-    Bubble Sort:
+        (n-1) + (n-2) + ... + 1
+        n(n-1)/2 // for large n, order will be n^2.
+        O(n*n) & omega(n*n)
+        theta(n*n)
 
+    Bubble Sort: 
+        repeat n-1 times  
+            for i from 0 to n-2  //as we taking 2 elements in every count means if i = n-2 then i+1 = n-1 that completes our search so we consider till n-2 only in place of n-1.
+                if numbers[i] and numbers[i+1] out of order
+                    swap them
+            if no swaps 
+                Quit
+        
+        (n-1) * (n-1)
+        n^2 - 2n + 1 for larger value of n, it become order of n^2 i.e. O(n*n)
+        omega for this is "n" i.e omega(n)
 }
 
-Recursion:
+Recursion: (the ability of a function to call itself.)
 {
-    
+    if no door left 
+        return false
+    if number behind middle door
+        return true
+    else if number < middle door
+        *search left half
+    else if number > middle door 
+        *search right half
+
+        here * represent recursive line 
 }
 
 
