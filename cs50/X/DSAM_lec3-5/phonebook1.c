@@ -19,8 +19,9 @@ int main(void)
 {
     person people[2]; //means in person data type there is array called people.
 
-    people[0].name ="Kisu"; //in that data type, name data of the 0th array
+    people[0].name ="Kisu"; //in the data type, name data of the 0th array
     people[0].number = "1234";
+    //people[0].name here "." indicated that going inside the array at people[0] in person memory and look at the name.
 
     people[1].name = "Kislay";
     people[1].number = "12345";
