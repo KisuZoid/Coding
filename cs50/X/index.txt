@@ -1,8 +1,8 @@
 lec0 : Scratch
-lec1 : C
-lec2 : Arrays
-lec3 : Algorithms
-lec4 : Memories
+lec1 : C(1-7)
+lec2 : Arrays(8-14)
+lec3 : Algorithms(1-5)
+lec4 : Memories(6- )
 lec5 : Data structures
 lec6 : Python
 lec7 : SQL
