@@ -68,6 +68,10 @@ Sorting: //let total n element
             sort left half of numbers
             sort right half of numbers
             merge sorted halves
+
+        O(nlogn)
+        omega(nlogn)
+        theta(nlogn)
     }
 }
 
