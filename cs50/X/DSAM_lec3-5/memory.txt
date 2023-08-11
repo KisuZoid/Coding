@@ -1,0 +1,48 @@
+Decimal system: (humans)
+{
+   elements:{0 1 2 3 4 5 6 7 8 9} | numbers represented in base of 10. i.e. 1, 10, 100, 1000, 10000 etc.
+   Example: 123 
+   value of base 10:       100 10 1
+   decimal value for 123 :   1  2 3
+   i.e. 1*10^2 + 2*10^1 + 3*10^0  
+}
+
+Binary system: (in computers)
+{
+    element:{0 1} | numbers represented in base of 2. 2^0, 2^1, 2^2, 2^3, 2^4 etc.
+    example: 123
+    value of base 2:      64 32 16 8 4 2 1
+    binary value for 123:  1  1  1 1 0 1 1  
+    i.e. 1*2^6 + 1*2^5 + 1*2^4 + 1*2^3 + 0*2^2 + 1*2^1 + 1*2^0             
+}
+
+Hexadecimal system: (memory and art(photoshop)) {representation of hexa value FF: 0xFF and similar for all other values write together with "0x"}
+{
+    element:{0 1 2 3 4 5 6 7 8 9 A B C D E F} //case not matter weather uppercase or lowercase. | a means 10 in decimal, b for 11 and so on f for 15. 
+    numbers represented in base of 16. 16^0, 16^1, 16^2, etc.
+    example: 123
+    value of base 16:  16 1
+    hexa value for 123: 7 B
+    i.e. 7*16 + 1*B
+}
+
+convertion :
+{
+    F in Hexadecimal means 15 in decimal means 00001111 in binary
+    E in Hexadecimal means 14 in decimal means 00001110 in binary
+    D in Hexadecimal means 13 in decimal means 00001101 in binary
+    C in Hexadecimal means 12 in decimal means 00001100 in binary
+    B in Hexadecimal means 11 in decimal means 00001011 in binary
+    A in Hexadecimal means 10 in decimal means 00001010 in binary
+    9 in Hexadecimal means 9 in decimal means 00001001 in binary
+    8 in Hexadecimal means 8 in decimal means 00001000 in binary
+    7 in Hexadecimal means 7 in decimal means 00000111 in binary
+    6 in Hexadecimal means 6 in decimal means 00000110 in binary
+    5 in Hexadecimal means 5 in decimal means 00000101 in binary
+    4 in Hexadecimal means 4 in decimal means 00000100 in binary
+    3 in Hexadecimal means 3 in decimal means 00000011 in binary
+    2 in Hexadecimal means 2 in decimal means 00000010 in binary
+    1 in Hexadecimal means 1 in decimal means 00000001 in binary
+    0 in Hexadecimal means 0 in decimal means 00000000 in binary
+
+}
