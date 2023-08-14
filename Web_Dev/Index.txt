@@ -1,3 +1,0 @@
-HTML: Hypertext markup language
-CSS: Cascading Style Sheets
-JS: Java Script
