@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form action="/reieve" method="GET">
+        <lable for="username">Name:</lable>
+        <br>
+        <input type="text" name="username" id="username">
+        <br>
+        <lable>Number:</lable>
+        <br>
+        <input type="number" name="number" id="num">
+        <br>
+        <lable>Password:</lable>
+        <br>
+        <input type="password" name="password" id="pass">
+        <br>
+        <lable for="username1">Name1:</lable>
+        <input type="checkbox" name="username1" id="username1" value="Kisu">
+        <br>
+        <lable for="username2">Name2:</lable>
+        <input type="checkbox" name="username2" id="username2" value="Kislay">
+    
+        <br>
+        <lable for="username3">Name3:</lable>
+        <input type="radio" name="username3" id="username3" value="Kisu">
+        <br>
+        <lable for="username3">Name4:</lable>
+        <input type="radio" name="username3" id="username4" value="Kislay">
+
+        <br>
+
+        <input type="submit" value="send">
+    </form>
+</body>
+</html>
+
+<!--
+    name in input signifies that when this data is send to the server, it will be classified in name="username"
+    id is the special assigned value of that function.
+    action using this, we provide the path where we want to send the data 
+    method : The HTTP method that the browser uses to submit the form. Possible values are
+    method GET: Corresponds to the HTTP GET method; form data are appended to the action attribute URI with a '?' as separator, and the resulting URI is sent to the server. Use this method when the form has no side-effects and contains only ASCII characters.
+    method POST: Corresponds to the HTTP POST method ; form data are included in the body of the form and sent to the server.
+    dialog: Use when the form is inside a <dialog> element to close the dialog when submitted.
+-->
