@@ -1,0 +1,30 @@
+/*for complete tag as a selector, just use the name of tag*/
+body {
+    background-image: url("https://lh3.googleusercontent.com/hwau7OVWx96XaME5KpRuJ0I_MscrerK6SbRH1UwYHYaxIDQQtn7RZK02LDSfBzCreidFgDsJeXyqDct6EZiH6vsV=w640-h400-e365-rj-sc0x00ffffff");
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+h1 {
+    color: red;
+    background-color: yellow;
+    opacity: 0.6;
+}
+/*for representing id as a selector use "#" followed by the name of id*/
+#intro {
+    color: purple;
+    margin: 50px 70px 90px 100px;
+}
+/*for representing class as a selector use "." followed by the name of class*/
+.first {
+    background-color: beige;
+    margin-left:50px ;
+    margin-top: 50px ;
+}
+/*universial selector use "*" sign :- it make default value for your page if you will just forget to assign */
+* {
+    color: rgb(15, 189, 189) ;
+}
+/*combine the selectors*/
+h2, h3 {
+    color:orchid;
+}
