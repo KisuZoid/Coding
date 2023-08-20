@@ -1,9 +1,10 @@
 /*for complete tag as a selector, just use the name of tag*/
 body {
-    background-image: url("https://lh3.googleusercontent.com/hwau7OVWx96XaME5KpRuJ0I_MscrerK6SbRH1UwYHYaxIDQQtn7RZK02LDSfBzCreidFgDsJeXyqDct6EZiH6vsV=w640-h400-e365-rj-sc0x00ffffff");
+    background-image: url("https://img.freepik.com/free-photo/old-black-background-grunge-texture-dark-wallpaper-blackboard-chalkboard-room-wall_1258-28312.jpg");
     background-repeat: no-repeat;
-    background-size: cover;
-    
+    background-size: cover;   
+    height: 100%; 
+    width: 100%;
 }
 h1 {
     color: red;
@@ -15,15 +16,22 @@ h1 {
     color: purple;
     margin: 50px 70px 90px 100px;/*top right bottom left*/
     border: solid;
-    border-color: blue;
+    border-top-style:dashed;
+    border-bottom-style: groove;
+    border-bottom-width: 10px ;
+    border-color: purple;
+    text-align: center;
 }
 /*for representing class as a selector use "." followed by the name of class*/
 .first {
     background-color: beige;
     margin-left:50px ;
     margin: 100px 100px;/*top&Bottom right&Left*/
-    border: dashed;
-    border-color: black;
+    border-style: dashed double dotted solid;
+    border-width: 20px 15px 10px 5px;
+    border-color: red blue green skyblue;
+    border-radius: 10px;
+    padding-left: 5%;
 }
 /*universial selector use "*" sign :- it make default value for your page if you will just forget to assign */
 * {
@@ -31,13 +39,39 @@ h1 {
 }
 /*combine the selectors*/
 h2, h3 {
-    color:orchid;
+    color: white;
+    text-decoration: overline purple solid 5px;
 }
 b {
-    margin-left: 100px;
+    margin-left: 70px;
 }
 p {
-    color: white;
-    margin: 50px; /*i.e. as only one margin specified so, margin from all sides by default*/
+    color: black;
+    margin: 30px; /*i.e. as only one margin specified so, margin from all sides by default*/
     margin-left: inherit; /*as selector p is part  of selector b, so for inherit means p will take the value from b.*/
+    height: fit-content;
+    max-width: 50%;
+    background-color: antiquewhite;
+    outline-style: solid;
+    outline-color: aqua;
+    border: 2px dashed blueviolet;
+    outline-offset: 5px;
+    text-align: justify;
+}
+h3 .text {
+    vertical-align: top;
+    margin-left: 5px;
+    text-decoration-line: overline underline;
+    text-decoration-color: white;
+    text-decoration-thickness: 5px;
+    color: blanchedalmond;
+}
+a {
+    text-decoration: none;
+    text-transform: capitalize;
+    letter-spacing: 10px;
+    font-size: 20px;
+    font-style: italic;
+    font-weight: bold;
+    font-family: sans-serif;
 }
