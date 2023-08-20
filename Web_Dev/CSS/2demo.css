@@ -3,6 +3,7 @@ body {
     background-image: url("https://lh3.googleusercontent.com/hwau7OVWx96XaME5KpRuJ0I_MscrerK6SbRH1UwYHYaxIDQQtn7RZK02LDSfBzCreidFgDsJeXyqDct6EZiH6vsV=w640-h400-e365-rj-sc0x00ffffff");
     background-repeat: no-repeat;
     background-size: cover;
+    
 }
 h1 {
     color: red;
@@ -12,13 +13,17 @@ h1 {
 /*for representing id as a selector use "#" followed by the name of id*/
 #intro {
     color: purple;
-    margin: 50px 70px 90px 100px;
+    margin: 50px 70px 90px 100px;/*top right bottom left*/
+    border: solid;
+    border-color: blue;
 }
 /*for representing class as a selector use "." followed by the name of class*/
 .first {
     background-color: beige;
     margin-left:50px ;
-    margin-top: 50px ;
+    margin: 100px 100px;/*top&Bottom right&Left*/
+    border: dashed;
+    border-color: black;
 }
 /*universial selector use "*" sign :- it make default value for your page if you will just forget to assign */
 * {
@@ -27,4 +32,12 @@ h1 {
 /*combine the selectors*/
 h2, h3 {
     color:orchid;
+}
+b {
+    margin-left: 100px;
+}
+p {
+    color: white;
+    margin: 50px; /*i.e. as only one margin specified so, margin from all sides by default*/
+    margin-left: inherit; /*as selector p is part  of selector b, so for inherit means p will take the value from b.*/
 }
