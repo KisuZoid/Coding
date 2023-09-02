@@ -13,6 +13,7 @@ int main(void)
     //%.2f means output as float till 2 decimal places
 }
 
+
 /*
 * ; is should be after all statement
 *here we include cs50 library coz some keywords are part of cs50 itself. and there is inbuild library of C as well "stdio"
