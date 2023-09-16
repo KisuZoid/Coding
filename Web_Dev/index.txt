@@ -1,3 +1,0 @@
-HTML : Decides structure of web page
-CSS : Decides design of web page
-JS : Decides functionality of web page
