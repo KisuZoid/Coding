@@ -9,7 +9,7 @@ for _ in range(3):
 """
 for i in [0, 1, 2]:
     print("meow") 
-"""
+""" 
 #means for loop 1: i = 0, loop 2: i = 1, loop 3: i = 2 and for each loop, print meow
 #for loop allows to iterate over list of items
 #[0, 1, 2] square bracket indicates a list. 0,1,2 is the items of the list
