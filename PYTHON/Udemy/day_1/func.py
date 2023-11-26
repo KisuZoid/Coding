@@ -1,9 +1,10 @@
 print("Hello, " + input("What is your name? ") + "\n")
-x = input("What is your name? ")
-print("Hello, "+ x)
-y = len(x)
-print(y)
-print("Number of character in a input string : "+str(y))
+#or
+name = input("What is your name? ")
+print("Hello, "+ name)
+length_input_string = len(name)
+print(length_input_string)
+print("Number of character in a input string : "+str(length_input_string))
 
 
 """
