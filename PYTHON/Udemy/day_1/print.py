@@ -32,5 +32,5 @@ print(x)
 # we can use double as well as single quatation mark as well.
 # as per python documentation, print() func. makes a new line at end by default.
 # print()  contain end="\n", we can change this as per our need
-# We can combine string using arthimetic sign "+" 
+# We can combine/Concatenate string using arthimetic sign "+" 
 # x is a variable(contain data) which is assignd as string Kisu
