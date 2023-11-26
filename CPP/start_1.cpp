@@ -27,7 +27,7 @@ int main()
         ";" means statement ends
 
         "cout" is a function the display to the screen.
-            cout is in iostream file under namespace std.
+            cout is in iostream file under standard namespace.
             a << b; means b is assigned to a and then semi-colon ends that statement. 
             cout is the standard output function.
                 //or
