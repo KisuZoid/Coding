@@ -12,8 +12,10 @@ int main()
 }
 
 
-//comment
+// Single line comment
 /*
+    multi
+    line
     comment
 */
 
