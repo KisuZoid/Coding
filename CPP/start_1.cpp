@@ -4,10 +4,17 @@ using namespace std;
 
 int main()
 {
+    // declaration of variable
     string name;
+    int age;
+
+    cout << "What is your name? ";
     cin >> name;
-    cout << "Hello,\n\t"
-        << name;
+    cout << "What is your age? ";
+    cin >> age;
+    cout << "Hello, "
+        << name << "\n\t" << age << " is your age" << endl;
+
     return 0;
 }
 
@@ -37,7 +44,7 @@ int main()
         
         "cin" is a standard input function that takes input from user.
 
-        /n for new line, /t for insert tab key, 
+        /n or endl for new line, /t for insert tab key, 
 */
 
 /*
