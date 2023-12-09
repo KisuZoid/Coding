@@ -1,0 +1,11 @@
+Data Structure: 
+    *A named location that can be used to store and organize data.
+
+    ex: Family tree(A heirarcy of Family relationships)
+        Array(a collection of elements stored at contigous memory location)
+
+Algorithm:
+    *collection of steps to solve a problem.
+
+    ex: Linear search(one by on examine the elements of an array to find a value)
+
