@@ -13,3 +13,6 @@ with open("name.txt") as file:
 
 for name in sorted(names):
     print(f"hello, {name}")
+print("\n")
+for name in sorted(names, reverse=True): #reverse=True will reverse the shorted list (find in documentation)
+    print(f"hello, {name}")
