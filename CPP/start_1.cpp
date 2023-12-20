@@ -45,6 +45,13 @@ int main()
         "cin" is a standard input function that takes input from user.
 
         /n or endl for new line, /t for insert tab key, 
+     
+    There are two types of header file:
+    1. System header file: it comes with the compiler
+    2. User defined header files: it will writetn by the programmer.
+        ex: #include <defined_file.h> here defined file must be in current directory.
+
+    for reference: "cppreference.com"
 */
 
 /*
