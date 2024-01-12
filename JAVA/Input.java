@@ -14,5 +14,9 @@ public class Input{
 
 /*
  * #Code Explain:-
+ * : Scanner class is found in java utility package of the java library. 
+ *      to use Scanner, we have to import that package "java.util.Scanner"
+ *      "import java.util.Scanner" means import Scanner from utility package which is inside java library.
+ * :  
  * 
  */
