@@ -1,4 +1,4 @@
-public class SwapVar_3{
+public class _3_SwapVar{
     public static void main(String[] args){
         //Swapping of two variable:
         String x,y,temp; //declare variable in a single line.
