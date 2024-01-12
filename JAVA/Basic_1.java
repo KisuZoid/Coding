@@ -30,4 +30,5 @@ public class Basic_1{ //everything inside curly braces is part of class.
  *     "\t" will add tab(4 space). 
  *      to print double quote, use an escape character "\" 
  *          ex: \"
+ * : Machine will read the code inside "main(){//Code block}" from top to bottom left to right.
 */
