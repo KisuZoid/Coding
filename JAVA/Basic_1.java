@@ -24,8 +24,8 @@ public class Basic_1{ //everything inside curly braces is part of class.
  *          ex: file name "Main.java" means class name will be "Main".
  * : Java is case sensative. i.e. "Myclass" and "myclass" is different.
  * 
- * : "println()" -> here "ln" will add new line after printing the item inside parentheses.
- * : "print()" -> it will print the item inside parentheses without adding new line.
+ * : "println()" -> here "ln" will terminate the line after printing the item inside parentheses.
+ * : "print()" -> it will print the item inside parentheses without terminating the line.
  *     to create new line use "\n" i.e. "print("statement\n")"
  *     "\t" will add tab(4 space). 
  *      to print double quote, use an escape character "\" 
