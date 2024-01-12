@@ -31,4 +31,6 @@ public class _1_Basic{ //everything inside curly braces is part of class.
  *      to print double quote, use an escape character "\" 
  *          ex: \"
  * : Machine will read the code inside "main(){//Code block}" from top to bottom left to right.
+ * : System.out.println() : 
+ *      System is a built-in Java class that contains useful members, such as out, which is short for "output". The println() method, short for "print line", is used to print a value to the screen (or a file).
 */
