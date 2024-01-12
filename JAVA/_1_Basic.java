@@ -1,4 +1,4 @@
-public class Basic_1{ //everything inside curly braces is part of class.
+public class _1_Basic{ //everything inside curly braces is part of class.
     public static void main(String[] args){ //main method (body of the Code will be written here between curly braces)
         System.out.print("I Love Pizza\n");
         System.out.println("What do you like??");
