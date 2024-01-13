@@ -2,7 +2,7 @@ import java.util.Scanner;
 //more will be covered under oops.
 public class _4_Input{
     public static void main(String[] args){
-        Scanner scanner = new Scanner(System.in); //a new Scanner that produces values scanned from the specified input stream.
+        Scanner scanner = new Scanner(System.in); //Construct a new Scanner that produces values scanned from the specified input stream.
 
         System.out.println("What is your name? ");
         String name = scanner.nextLine(); // Here, we are using nextLine() method to read the line of text.
@@ -35,4 +35,9 @@ public class _4_Input{
  *      i.e. escape character will remain in Scanner.
  *      so, when we use nextLine() just after nextInt(), it will hit escape character and stop the line.
  *          to prevent this to happen, we have to use nextLine() twice. 
+ * 
+ * : System : The System class contains several useful class fields and methods.
+ *               Among the facilities provided by the System class are standard input, standard output, and error output streams
+ * 
+ *          System.in : "in" stands for Standard Input Stream. 
  */
