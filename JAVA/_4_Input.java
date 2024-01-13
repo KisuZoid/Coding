@@ -16,8 +16,7 @@ public class _4_Input{
 
         System.out.println("Hello, " + name);
         System.out.println("Your age is " + age);
-        System.out.println("Your like " + food);
-
+        System.out.println("You like " + food);
     }
 }
 
