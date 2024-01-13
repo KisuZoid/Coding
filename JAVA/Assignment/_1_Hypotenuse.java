@@ -14,7 +14,7 @@ public class _1_Hypotenuse {
         System.out.print("Enter Height of a Triangle: ");
         height = scanner.nextDouble();
         
-        hypotenues = Math.sqrt(base*base + height*height);
+        hypotenues = Math.sqrt((base*base) + (height*height));
         System.out.println("Hypotenues of a triangle of Height " + height + " and Base is " + base + " = " + hypotenues);
         scanner.close();
     }
