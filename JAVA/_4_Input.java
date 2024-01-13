@@ -1,5 +1,5 @@
 import java.util.Scanner;
-
+//more will be covered under oops.
 public class _4_Input{
     public static void main(String[] args){
         Scanner scanner = new Scanner(System.in); //a new Scanner that produces values scanned from the specified input stream.
@@ -17,6 +17,8 @@ public class _4_Input{
         System.out.println("Hello, " + name);
         System.out.println("Your age is " + age);
         System.out.println("You like " + food);
+
+        scanner.close(); //for closing the scanner
     }
 }
 
