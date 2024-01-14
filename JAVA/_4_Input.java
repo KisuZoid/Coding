@@ -31,8 +31,8 @@ public class _4_Input{
  *      "Returns String"
  * : "scanner" is the name for class Scanner.
  * : nextLine() method, this method will read the whole line.
- *      when we press enter i.e. \n escape character will introduce.
- *          this method will read to escape method.
+ *      Using println() : \n escape character will introduce.
+ *          this method will read the line to escape(\n).
  * : nextInt() will return the int part of the text. 
  *      i.e. escape character will remain in Scanner.
  *      so, when we use nextLine() just after nextInt(), it will hit escape character and stop the line.
