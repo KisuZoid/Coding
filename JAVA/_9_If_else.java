@@ -9,16 +9,27 @@ public class _9_If_else {
 
         int age =  ageInput.nextInt();
 
-        if (age >= 18 && age <= 75){
-            System.out.println("You are an adult!");
+        if (age > 0){
+            if (age >= 18 && age <= 75){
+                System.out.println("You are an adult!");
+            }
+            else if (age > 75){
+                System.out.println("You are too old!");
+            }
+            else if (age >=13 && age < 18) {
+                System.out.println("Your are a teenager!");
+            }
+            else {
+                System.out.println("You are a kid!");
+            }    
         }
-        else if (age > 75){
-            System.out.println("You are too old!");
+        else if (age == 0){
+            System.out.println("New born baby!");
         }
         else {
-            System.out.println("Your are not an adult!");
+            System.out.println("Your age is invalid!!");
         }
-
+        
         ageInput.close();
     }
 }
