@@ -52,3 +52,10 @@ public class _2_Var{
  *      String  -> a sequence of characters written in double quote.
  *          ex: "string"
  */
+
+/* Final Variable :-
+ * For preventing future changes in a variable, use "final" keyword.
+ * this will declare the variable as "final" or "constant", which means unchangeable and read-only.
+ * final int num = 15;
+ * num = 2; // it will generate error.
+ */
