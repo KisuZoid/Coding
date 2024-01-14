@@ -22,6 +22,8 @@ public class _1_Basic{ //everything inside curly braces is part of class.
  * : Everything in java should be written in class. 
  *      name of the class will be same as name of the file.
  *          ex: file name "Main.java" means class name will be "Main".
+ * : The curly braces {} marks the beginning and the end of a block of code.
+ *      note that each code statement must end with a semicolon (;).
  * : Java is case sensative. i.e. "Myclass" and "myclass" is different.
  * 
  * : "println()" -> here "ln" will terminate the line after printing the item inside parentheses.
