@@ -28,7 +28,6 @@ public class _4_Input{
  * : Scanner class is found in java utility package of the java library. 
  *      to use Scanner, we have to import that package "java.util.Scanner"
  *      "import java.util.Scanner" means import Scanner from utility package which is inside java library.
- *      "Returns String"
  * : "scanner" is the name for class Scanner.
  * : nextLine() method, this method will read the whole line.
  *      Using println() : \n escape character will introduce.

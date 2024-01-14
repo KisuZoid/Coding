@@ -49,6 +49,7 @@ public class _10_Switch {
 /* #Code Explain:-
  * : using switch(condition), condition will match to each case. 
  *      if the match will found at case "x" (i.e. condition = x), complete the task assigned to x, then breaks out of the loop.
+ *          if we are not using break, then it will perform all cases after the matching case.
  *      else if the condition will not match with any case, then run the default statement and jumps out of the loop.
  * 
  * : break : The keyword is used to break out of the loop without proceeding further into the loop.
