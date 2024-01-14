@@ -6,9 +6,10 @@ public class _4_Input{
 
         System.out.println("What is your name? ");
         String name = scanner.nextLine(); // Here, we are using nextLine() method to read the line of text.
+                                          // This method returns the rest of the current line, excluding any line separator at the end.
 
         System.out.println("What is your age? ");
-        int age = scanner.nextInt();
+        int age = scanner.nextInt(); //Scans the next token of the input as an int.
         scanner.nextLine();
 
         System.out.println("What is your favourite food? ");
@@ -27,6 +28,7 @@ public class _4_Input{
  * : Scanner class is found in java utility package of the java library. 
  *      to use Scanner, we have to import that package "java.util.Scanner"
  *      "import java.util.Scanner" means import Scanner from utility package which is inside java library.
+ *      "Returns String"
  * : "scanner" is the name for class Scanner.
  * : nextLine() method, this method will read the whole line.
  *      when we press enter i.e. \n escape character will introduce.
