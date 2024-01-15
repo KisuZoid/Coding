@@ -1,4 +1,4 @@
-public class _12_For {
+public class _012_For {
     public static void main(String[] args) {
         //for loop : executes a block of code a limited amount of times 
     

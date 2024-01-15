@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-public class _9_If_else {
+public class _009_If_else {
     public static void main(String[] args) {
         // if statement :- Perform a block of code if it's condition to be true.
         

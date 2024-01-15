@@ -1,4 +1,4 @@
-public class _5_Arithmetic {
+public class _005_Arithmetic {
     public static void main(String[] args) {
         // expression = operands & operators
         // operands = values, variables, numbers, quantity

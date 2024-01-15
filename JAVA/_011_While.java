@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-public class _11_While {
+public class _011_While {
     public static void main(String[] args) {
         // While loop => It executes a block of code as long as the condition remains true.
 
