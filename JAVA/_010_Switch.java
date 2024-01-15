@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-public class _10_Switch {
+public class _010_Switch {
     public static void main(String[] args) {
         // switch :- Statement that allows a variable to be tested for equality against a list of value.
 

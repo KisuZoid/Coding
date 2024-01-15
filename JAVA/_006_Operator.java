@@ -1,4 +1,4 @@
-public class _6_Operator {
+public class _006_Operator {
     public static void main(String[] args){
         // Assignment Operators
         int x = 10;

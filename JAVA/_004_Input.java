@@ -1,6 +1,6 @@
 import java.util.Scanner;
 //more will be covered under oops.
-public class _4_Input{
+public class _004_Input{
     public static void main(String[] args){
         Scanner scanner = new Scanner(System.in); //Construct a new Scanner that produces values scanned from the specified input stream.
 

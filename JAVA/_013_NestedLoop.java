@@ -1,6 +1,6 @@
 import java.util.Scanner;
 
-public class _13_NestedLoop {
+public class _013_NestedLoop {
     public static void main(String[] args) {
         // nested loops : a loop isnide a loop
         

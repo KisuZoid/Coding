@@ -1,4 +1,4 @@
-public class _2_Var{
+public class _002_Var{
     public static void main(String[] args){
         int x; //declaration of variable
         x = 123; //assign the value to the variable.

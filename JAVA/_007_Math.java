@@ -1,4 +1,4 @@
-public class _7_Math {
+public class _007_Math {
     public static void main(String[] args) {
         double x = 3.14;
         double y = -10;
