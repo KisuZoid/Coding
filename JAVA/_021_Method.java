@@ -1,5 +1,3 @@
-import java.util.Scanner;
-
 public class _021_Method {
     public static void main(String[] args) {
         //Method = a block of code that is executed whenever it is called upon.
