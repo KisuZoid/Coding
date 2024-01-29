@@ -56,6 +56,8 @@ public class _002_Var{
 /* Final Variable :-
  * For preventing future changes in a variable, use "final" keyword.
  * this will declare the variable as "final" or "constant", which means unchangeable and read-only.
- * final int num = 15;
- * num = 2; // it will generate error.
+ * final int NUM = 15;
+ * NUM = 2; // it will generate error.
+ * 
+ * "Common practice: for declaring final variable use all upper case value for easily indentifying it"
  */
