@@ -1,4 +1,4 @@
-public class _23_PrintfMethod {
+public class _023_PrintfMethod {
     public static void main(String[] args) {
         /*
          * printf() => an optional method to cotrol, format, and display text to the console window.
