@@ -1,4 +1,4 @@
-package OopPackage;
+package OopPackage; //Declaring that it's a package;
 
 public class CarPackage {
     //Attributes(Characteristics)
