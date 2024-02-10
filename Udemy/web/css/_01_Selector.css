@@ -46,4 +46,9 @@ h4[draggable="true"]{
 /*Although function of id and class selector is same,
     but the id-selector can be applied to only one element of that html file.
     where, the class-selector can be applied to many elements.
+
+  1px: 1 pixel => 1/96th inch(0.26 mm square)
+  1pt: 1 point => 1/72nd inch(0.35 mm square)
+  1em: relative size to parent => 1*100% of parent size
+  1rem: relative size to root => 1*100% of root size
 */
