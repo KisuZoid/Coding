@@ -20,6 +20,8 @@
 
     /*set curvature at corner of the border*/
     border-radius: 10px;
+
+    min-width: fit-content;
 }
 
 #border{
@@ -58,6 +60,10 @@
     two values are provided:
     margin: <up-down> <left-right>;*/
     margin: 50px;
+
+    /*set minimum limit to shrink*/ 
+    min-height: fit-content;
+    min-width: fit-content;
 } 
 
 *{
