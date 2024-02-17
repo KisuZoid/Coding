@@ -69,3 +69,17 @@
 *{
     background-color: #B4B4B8;
 }
+
+/*
+CSS inheritance:
+    color: green !important; means this will be the 1st priority rule for this tag.
+    (in css, more specific will win.)
+        i.e.: properties inherit first:: Type       : inline css > internal css > external css.
+                                      :: Specificity: id selector > class selector 
+            : Position wise- bottom position rule will win.
+                ex: li{
+                        color: red;
+                        color: blue;
+                    }
+                    output will be in blue.                                       
+*/
