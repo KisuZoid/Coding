@@ -11,8 +11,8 @@ int main(){
     // Input from user and assigned to name variable.
     cin >> name;
 
-    cout << "What is your age? ";
-    cin >> age;
+    cout << "What is your age? "; /* << this is insertion operator*/
+    cin >> age; /* >> this is extraction operator*/
 
     cout << "Your name is " << name 
          << " and you are " 
