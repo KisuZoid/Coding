@@ -40,4 +40,11 @@ comment
         "using std::cout;" after header file, call cout from std which is applicable for all cout function. 
     
     : string should be written inside double quote. "String"
+
+    : There are 2 types of header file:-
+        1. system header file: comes with compiler
+        2. user defined header file: written by the programmer inside same directory.
+            ex: "#include example.h" where example.h is in the current directory as file.
+    
+    :search cpp reference in search engine.
 */
