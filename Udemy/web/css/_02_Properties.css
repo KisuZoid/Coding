@@ -88,20 +88,20 @@ CSS inheritance:
         Property of selector(applied to both)
     }
 
-: selector1 > selector2{
-    ...
-}
-    here selector1 is the parent and selector2 is the child, (selector2  must be direct decendent and inside selector1)
-    helps to distinguish the selector from other of same name.
+    selector1 > selector2{
+        ...
+    }
+        here selector1 is the parent and selector2 is the child, (selector2  must be direct decendent and inside selector1)
+        helps to distinguish the selector from other of same name.
 
-: selector1 selector2{
-    ...
-}
-    it gonna apply the css property to selector2 as long as it is the part/decendent of selector1.
+    selector1 selector2{
+        ...
+    }
+        it gonna apply the css property to selector2 as long as it is the part/decendent of selector1.
 
-: selector1selector2{
-    ...
-}
-    for being more specific, we use this. i.e apply css to all the selector1 which have selector2 as well, 
-                                                it can be chain for more selectors as well.
+    selector1selector2{
+        ...
+    }
+        for being more specific, we use this. i.e apply css to all the selector1 which have selector2 as well, 
+                                                    it can be chain for more selectors as well.
 */
