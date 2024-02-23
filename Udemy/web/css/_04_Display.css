@@ -1,0 +1,27 @@
+/*
+display: block; --> we can set the height and width of a block(by default it takes default setting of a html tag.).
+display: inline; --> size of block is set to be size of object.
+display: inline-block; --> shows both the property of inline and block. 
+*/
+
+/*
+if we want our text to wrap around some other element, we use css property of float.
+example, wrap the text right side of the image:-(by default img tag have block size of full width, so words will written down to it)
+    in css:
+    img{
+        float: left;
+    }
+    so that image will float to the left, word will wrap to the right of the image.
+
+    if we use property clear, it will the clear that applied float.
+    ex:
+        <p>float left to the image</p>
+        <footer>Place it to the bottom, escape from the css float property</footer>
+(footer is also a html tag, A footer typically contains information about its section such as who wrote it, links to related documents, copyright data, and the like.)
+        in css, for doing so:
+            footer{
+                clear: left;
+            }
+            now this footer can go its normal position.
+
+*/
