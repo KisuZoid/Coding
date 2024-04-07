@@ -21,7 +21,7 @@ int main(){
 //Manipulator:
 /*
 endl
-It is used to enter a new line with a flush.
+It is used to enter a new line.
 
 setw(a)
 It is used to specify the width of the output.
