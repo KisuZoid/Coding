@@ -7,7 +7,7 @@ int main(){
 
     //Read txt from Sample_txt_02_File_IO_read.txt
     ifstream read("Sample_txt_02_File_IO_read.txt"); //read is the object of ifstream class.
-    getline(read, read_txt); 
+    getline(read, read_txt); //get the line from read object file and paste it to read_txt.
     cout << read_txt;
 
     return 0;

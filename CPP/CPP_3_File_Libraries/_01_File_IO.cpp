@@ -11,7 +11,8 @@ int main(){
     out << print_01_out;
 
     ifstream in("./txt/sample_01_File_IO_in.txt"); //read operation
-    // in >> read_01_in; //--> this will give just first word only, 
+    // in >> read_01_in;
+    // cout << read_01_in; //--> this will give just first word only, 
 
     //to get whole line:
     getline(in, read_01_in);
