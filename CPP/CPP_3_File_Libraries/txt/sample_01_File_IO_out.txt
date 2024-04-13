@@ -1,0 +1,1 @@
+Sample for print inside sample_01.txt file side folder txt
