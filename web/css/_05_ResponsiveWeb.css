@@ -1,0 +1,87 @@
+/*
+Responsive Web:
+1. Media Query
+2. CSS Grid
+3. CSS flexbox
+4. External Frameworks e.g. Bootstrap
+*/
+
+/*
+--> Media Query
+@media(max-width: 600px){
+    --CSS code block for screens below or equal to 600px width--
+}
+
+@media(min-width: 600px){
+    --CSS code block for screens above or equal to 600px width--
+}
+
+@media(min-width: 600px) and (max-width: 900px){
+    --CSS code block for screens between 600px to 900px width--
+}
+
+@media(max-width: 600px) and (min-width: 900px){
+    --CSS code block for screens below or equal to 600px and  above or equal to 900px width--
+}
+*/
+
+/*
+--> CSS Grid
+<div class = "Grid-container">
+    <div class="first card">%%%%%%%%%%%</div>
+    <div class="card">!!!!!</div>
+    <div class="card">@@@@@</div>
+    <div class="card">#####</div>
+    <div class="card">$$$$$</div>
+</div>
+
+.Grid-container{
+    display: grid; --> grid type display where we can adjust both columns and rows. 
+    grid-template-columns: 1fr 1fr; --> create 2 column of same equal fraction (1fr)
+    grid-template-rows: 100px 200px 200px;
+    gap:30px;
+}
+.first{
+    grid-column: span 2; --> for this class, span/merge 2 column width together.
+}
+
+
+--result--
+%%%%%%%%%%% 
+!!!!! @@@@@
+##### $$$$$
+
+% --> row heigth 100px
+! @ # $ --> row height 200px
+gap between each of rows and columns is 300 px
+*/
+
+/*
+--CSS Flexbox --> allows to create 1D layout
+<div class="flex-container">
+    <div class="first card">!!!!!!!!!!!!</div>
+    <div class="second card">@@@</div>
+    <div class="card">######</div>
+    <div class="card">$$$$$$</div>
+</div>
+
+.flex-container{
+    display:flex; --> display type flex
+}
+
+.card{
+    height:100px; --> heigth of each div is 100px
+    flex:1; --> width allocated equally to all the div.
+}
+
+.first{
+    flex:2; --> div of class first have width allocated is changed to 2 times.
+}
+
+.second{
+    flex:0.5; --> div of class second have width allocated is changed to 0.5 times.
+} 
+
+--result--
+!!!!!!!!!!!! @@@ ###### $$$$$$
+*/
