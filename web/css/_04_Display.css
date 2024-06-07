@@ -2,6 +2,7 @@
 display: block; --> we can set the height and width of a block(by default it takes default setting of a html tag.).
 display: inline; --> size of block is set to be size of object.
 display: inline-block; --> shows both the property of inline and block. 
+display: none; --> disappear from page.
 */
 
 /*
@@ -21,6 +22,12 @@ example, wrap the text right side of the image:-(by default img tag have block s
         in css, for doing so:
             footer{
                 clear: left;
+            }
+
+            --if float property is used for both of the block I & II like left & right respectively--
+
+            footer{
+                clear: both;
             }
             now this footer can go its normal position.
 
