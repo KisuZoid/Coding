@@ -1,0 +1,13 @@
+Color   ::  Symbol
+Red     :: Love, Energy, Intensity
+Yellow  :: Joy, Intellect, Attention
+Green   :: Freshness, Safety, Growth
+Blue    :: Stability, Trust, Serenity
+Purble  :: Royality, Wealth, Feminity
+
+
+From Color Palate(circular color palate): --> go to "Adobe Color" of color combination or go to "colorhunt.co"
+Analogous Color     :: Looks harmonious and really works great together. --> good for navigation bar, body of website, logo and its background. but not good at standing out.
+Complementary Color :: Out color will Pop out/Standes out. --> not good for text and text background.
+
+:: for combining color, we can use eqilateral triangle or perfect square to combine.
