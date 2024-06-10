@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flex sizing</title>
+
+    <style>
+        .container{
+            border: 1px solid black;
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .review{
+            border: 1px solid black;
+        }
+
+        .part{
+            border: 1px solid black;
+            /*sizing*/
+            width: 100px;
+            height: 200px;
+            max-width: 200px;
+            /*prevent shrinking of container*/
+            flex-shrink: 0;
+            flex-grow: 1; /*--> grow to its maximum width or whole container if max-width is not mentioned*/
+        }
+
+        p{
+            font-weight: bold;
+        }
+
+        /*
+        sizing prference: content width < width < flex-basis < min-width/max-width
+        flex-grow --> it will decide whether the container will grow when page expands or not, 
+            similarly flex-shrink --> will decide container will shrink when page shrinks or not.
+        */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="review"><p>first</p></div>
+        <div class="review"><p>second</p></div>
+        <div class="review"><p>t<br/>h<br/>i<br/>r<br/>d</p></div>
+    </div>
+    <div class="container">
+        sizing:
+        <div class="one part"><p>first</p></div>
+        <div class="second part"><p>second</p></div>
+        <div class="three part"><p>t<br/>h<br/>i<br/>r<br/>d</p></div>
+    </div>
+</body>
+</html>

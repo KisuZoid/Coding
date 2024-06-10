@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flexible Layout</title>
+
+    <style>
+        .part{
+            border: 1px solid black;
+            flex-basis: 100px;
+        }
+
+        .container{
+            margin-top: 20px;
+            border: 1px solid black;
+        }
+
+    /*Order Property*/
+        .Order{
+            display: flex;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .First{
+            order: 1; /* --> objects will arrange in same order as in html script untill order is defined. | Order is set zero for all objects. | "I" have set order as 1. */
+        }
+
+        .Second{
+            order: 3; /* "II" have set order as 3.*/
+        }
+
+        .Third{
+            order: 2; /* "III" have set order as 2. i.e it will be there between 2nd and 3nd order.*/
+        }
+
+    /*Wrap Property*/
+        .Wrap{
+            display: flex;
+            gap: 10px;
+            text-align: center;
+            flex-wrap: wrap; /*--> flex-wrap is the property of parent container that tells whether chil will "wrap" or "nowrap". | nowrap will prevent from wrapping around*/
+        }
+
+    /*Justify Content property*/
+        .Justify{
+            display: flex;
+            gap: 10px;
+            text-align: center;
+            justify-content: space-between; /* --> justify-content is the property of parent container | flex-end: flex container will be at end/right side | center : flex container will be at center | similarly for start, it will be at left side | space-between: it will generate spaces between objects from starts to end.*/
+            /*justify-content is applied across main axis. | main axis is same as direction of flex | cross axis is perpendicular to main axis */
+        }
+
+    /*Align Item property --> applicable across cross axis | it is also a parent poperty*/
+        .Align{
+            display: flex;
+            gap: 10px;
+            text-align: center;
+            height: 20vh; /*--> vh : viewport height i.e our whole screen is a viewport and its height count as 100vh.*/
+            align-items: center; /*--> align the item at center of the container. | flex-end: flex container will be at end/right side | center : flex container will be at center | similarly for start, it will be at left side |*/
+        }
+
+        .four{
+            align-self: flex-start; /*--> align this particular object*/
+        }
+
+    /*Align Content property --> everything is same as align item except it will activate only when flex-wrap is set to wrap.*/
+        .Align-content{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            height: 20vh;
+            align-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="Order container">
+        Order:
+        <div class="First part">I</div>
+        <div class="Second part">II</div>
+        <div class="Third part">III</div>
+        <div class="Fourth part">IV</div>
+        <div class="Fifth part">V</div>
+    </div>
+
+    <div class="Wrap container">
+        Wrap:
+        <div class="part">I</div>
+        <div class="part">II</div>
+        <div class="part">III</div>
+        <div class="part">IV</div>
+        <div class="part">V</div>
+    </div>
+
+    <div class="Justify container">
+        Justify:
+        <div class="part">I</div>
+        <div class="part">II</div>
+        <div class="part">III</div>
+        <div class="part">IV</div>
+        <div class="part">V</div>
+    </div>
+
+    <div class="Align container">
+        Align:
+        <div class="part">I</div>
+        <div class="part">II</div>
+        <div class="part">III</div>
+        <div class="four part">IV</div>
+        <div class="part">V</div>
+    </div>
+
+    <div class="Align-content container">
+        Align Content:
+        <div class="part">I</div>
+        <div class="part">II</div>
+        <div class="part">III</div>
+        <div class="part">IV</div>
+        <div class="part">V</div>
+    </div>
+</body>
+</html>

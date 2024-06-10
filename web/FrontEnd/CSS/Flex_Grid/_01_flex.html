@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flex</title>
+
+    <style>
+        .container{
+            display: flex; /*--> make display style as flex | it is by default row type flex*/
+            gap: 10px;  /*--> make gap*/
+        }
+        /* width of flex divided into 1:2:3 respectively for the div */
+        .one{
+            flex: 1;
+            flex-basis: 20px; /*--> flex-basis helps to increase flex box size in same direction it is. i.e for row, it will increase in row, and for column, it will increase column.*/
+        }
+
+        .second{
+            flex: 2;
+        }
+
+        .three{
+            flex: 3;
+        }
+
+        div > div{
+            border: 1px solid black;
+        }
+
+        /*
+        Notes:
+            display:flex; --> same like display block, flex will acquire rest of the width of page.
+                where, display: inline-flex; --> acquired only required width of page.
+
+                --> it is the 1D layout system.
+        */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="one"><p>One</p></div>
+        <div class="second"><p>second</p></div>
+        <div class="three"><p>three</p></div>
+    </div>
+</body>
+</html>
