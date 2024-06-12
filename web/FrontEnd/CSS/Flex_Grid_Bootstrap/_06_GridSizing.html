@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grid Sizing</title>
+    <style>
+        .grid-container1{
+            border: 1px solid black;
+            display: grid;
+            /*
+            grid-template: 100px 200px / 200px auto;
+            -or-
+            */
+            grid-template-rows: 100px 200px;
+            grid-template-columns: 200px auto; /*--> auto will give sort of responsiveness that it will automatically takes all the remaining width of the screen;
+            In case of height, "auto" will give such a responsiveness that it will automatically takes the required height.*/
+        }
+
+        .grid-container2{
+            border: 1px solid black;
+            margin-top: 20px;
+            display: grid;
+            grid-template-rows: 100px 200px;
+            grid-template-columns: 200px minmax(400px , 800px); /*--> minman(lower limit, upper limit), it will set a limit between lower to upper*/
+        }
+
+        .grid-container3{
+            border: 1px solid black;
+            margin-top: 20px;
+            display: grid;
+            grid-template-rows: 100px 100px;
+            grid-template-columns: repeat(2, 100px);
+            grid-auto-rows: 200px; /*when we create extra grid after end of the defined one, then just give it grid-auto-rows value for row or grid-auto-columns value for column*/
+        }
+
+        .grid-item{
+            border: 1px solid black;
+        }
+
+        /*
+        grid-template-row: repeat(2, 200px); -or- grid-template-row: 200px 200px; (repeat 200px 2 times) 
+        grid-template-column: repeat(2, 100px); (repeat 100px 2 times) 
+        */
+    </style>
+</head>
+<body>
+    <div class="grid-container1">
+        <div class="grid-item">1</div>
+        <div class="grid-item">2</div>
+        <div class="grid-item">3</div>
+        <div class="grid-item">4</div>
+    </div>
+    <div class="grid-container2">
+        <div class="grid-item">I</div>
+        <div class="grid-item">II</div>
+        <div class="grid-item">III</div>
+        <div class="grid-item">IV</div>
+    </div>
+    <div class="grid-container3">
+        <div class="grid-item">1</div>
+        <div class="grid-item">2</div>
+        <div class="grid-item">3</div>
+        <div class="grid-item">4</div>
+        <div class="grid-item">5(auto-row)</div>
+    </div>
+</body>
+</html>
