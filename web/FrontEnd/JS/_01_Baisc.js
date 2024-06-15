@@ -17,10 +17,13 @@ x = typeof(true);
 console.log("x is " + x); //-->x is boolean
 
 x = 3 + 4;
-console.log("3 + 4 = " + x);
+console.log("3 + 4 = " + x); //--> 3 + 4 = 7
 
 x = "Kisu" + "Zoid";
-console.log("I am " + x);
+console.log("I am " + x); //--> I am KisuZoid
+
+x = "Kislay" + " " + "Anand";
+console.log("My name is " + x); //--> My name is Kislay Anand
 
 /* 
 multi

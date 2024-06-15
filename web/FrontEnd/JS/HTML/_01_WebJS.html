@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>basic web command in JS</title>
+</head>
+
+<body>
+    <script>
+        alert("What is your name"); //-->alert("your message") it will give the alert message popup.
+        prompt("Write your name?"); //-->popup show a prompt with message written and we can reply as well and with ok button.
+
+        //Ques: 1.take input from user, 2. character count and remaining character out of 10, 3. display a message about the input count that is valid or invalid count.
+        const userInput = prompt("Write your sentences");
+        const count = 10 - userInput.length;
+        if (userInput !== null) {
+            if (userInput.length < 10) {
+                alert("Valid count: your count " + userInput.length + " remaining " + count);
+            }
+            else {
+                alert("Invalid count: your count " + userInput.length + " remaining " + count);
+            }
+        }
+        else {
+            alert("you haven't entered any value")
+        }
+    </script>
+</body>
+
+</html>
