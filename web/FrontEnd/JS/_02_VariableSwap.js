@@ -3,7 +3,7 @@ a = 8;
 b = 4;
 console.log("Value of 'a' is " + a + " And Value of 'b' is " + b);
 
-console.log(); //for spacing, we can use this empty print or "\n"
+console.log(); //for empty line or new line, we can use this empty print or "\n"
 
 var temp = a;
 a = b;
