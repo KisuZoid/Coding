@@ -9,9 +9,9 @@ var firstID = "Kisu";
 var lastID = "Zoid";
 console.log(firstID + lastID) //--> KisuZoid
 
-var ID = firstID + lastID;
 
 //Find Length of string ::
+var ID = firstID + lastID;
 console.log(ID.length); //--> ID.length provide length of the string ID(including spaces)
 
 
@@ -22,6 +22,24 @@ console.log(sliced); //--> display K
 
 word = "01234";
 console.log(word.slice(0,3)); //--> display 012
+console.log(word.slice(2, )); // --> display 234, form 2nd index to last
+
+
+//Casing
+var casing = "kIsU"
+casing = casing.toUpperCase(); //--> KISU
+console.log(casing); // --> toUpperCase will capitalise characters of string.
+
+casing = casing.toLowerCase(); //--> kisu
+console.log(casing);
+
+//capitalize 1st character
+var firstChar = casing.slice(0,1).toUpperCase();
+var otherChar = casing.slice(1, ).toLowerCase(); //--> from 1st position to last one
+casing = firstChar + otherChar;
+console.log(casing);
+
+
 
 //Ques: 1.take input from user, 2. character count and remaining character out of 10, 3. display a message about the input count that is valid or invalid count.
 const userInput = ""; //const is a keyword for constant --> means valid can not changed further
