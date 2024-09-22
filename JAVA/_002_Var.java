@@ -35,7 +35,7 @@ public class _002_Var{
  * : <data_type> -> is a declaration for a variable, that specify what type of value, the variable gonna contain.
  * <basic dataType> -> <Value>
  *      boolean -> ture(1) or false(0)
- *      byte    -> -128 to -127
+ *      byte    -> -128 to 127
  *      short   -> -32,720 to 32,767
  *      int     -> -2 billion to 2 billion
  *      long    -> -9 quintillion to 9 quintillion
