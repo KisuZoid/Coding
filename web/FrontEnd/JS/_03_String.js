@@ -28,7 +28,7 @@ console.log(word.slice(2, )); // --> display 234, form 2nd index to last
 //Casing
 var casing = "kIsU"
 casing = casing.toUpperCase(); //--> KISU
-console.log(casing); // --> toUpperCase will capitalise characters of string.
+console.log(casing); // --> toUpperCase() will capitalise characters of string.
 
 casing = casing.toLowerCase(); //--> kisu
 console.log(casing);
@@ -39,6 +39,7 @@ var otherChar = casing.slice(1, ).toLowerCase(); //--> from 1st position to last
 casing = firstChar + otherChar;
 console.log(casing);
 
+console.log(casing.charAt(0)); //charAt() : We can get the char value at 0th index of casing variable
 
 
 //Ques: 1.take input from user, 2. character count and remaining character out of 10, 3. display a message about the input count that is valid or invalid count.
