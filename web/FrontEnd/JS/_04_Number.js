@@ -17,3 +17,13 @@ console.log(b); //-->5
 
 //similarly decrement variable: --a, a--
 
+//Random
+var n = Math.random(); //gives random numner between 0-1
+console.log(n);
+
+//manipulating the range
+n*=6; //n = n*6
+console.log(n);
+//min=1, max=6
+n = Math.floor(n) + 1; //Returns the greatest integer less than or equal to its numeric argument.
+console.log(n);
