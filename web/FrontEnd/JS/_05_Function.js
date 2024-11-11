@@ -30,7 +30,7 @@ function BMIcalc(weigth, heigth){
 
 //Function calling it self --> Recurrsive function
 function Factorial_Recurrsion(n){
-    if (n==1 || n==0){ // "&& --> means And" "|| --> means Or"
+    if (n===1 || n===0){ // "&& --> means And" "|| --> means Or"
         return 1;
     }
     return n*Factorial_Recurrsion(n-1);
