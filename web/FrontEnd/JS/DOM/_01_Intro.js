@@ -39,7 +39,7 @@ changeNameThird.innerHTML = "change";
 //color of 1rd li using selector method --> select the element similar as CSS
 document.querySelector("li a").style.color = "green"; //--> herarcial selector, child and parent provide space between two selector
 
-document.querySelector("li.list"); //all is in same element, --> no space needed. --> this tag satisfies 3 elements but first one will gonna select by default
+document.querySelector("li.list"); //all is in same element, --> no space needed. --> this tag satisfies 3 elements but first one will gonna select by default, it will select all the class "list", which is in "li" tag.
 //to select all:
 document.querySelectorAll("li.list"); //--> selects all the element that matches, it gives list of all the items
 //manipulate --> change 3rd li color
@@ -55,3 +55,16 @@ document.getElementsByTagName("li")[1].style.color = "purple"; //[index_ofElemen
 
 //select by id
 // document.getElementById("ID_ofElement");
+
+
+//add class "invisible" in html using javascript
+document.querySelector("button").classList.add("invisible");
+
+//we can perform all the task:
+document.querySelector(".invisible").innerHTML = "button"; //change label of button from click to button.
+
+//remove class "invisible" in html using JS:
+// document.querySelector("button").classList.remove("invisible");
+
+//toggle the query, i.e. if applied then remove, if not applied then add.
+// document.querySelector("button").classList.toggle("invisible");
