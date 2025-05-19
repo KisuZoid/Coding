@@ -21,19 +21,21 @@ heading.style.color = "grey"; //change color
 //select via name and apply method "click" on it
 document.querySelector("input").click(); //--> by default our checkbox is checked
 
-//getter(get property)
+//getter(get property):
 // object.proterty;
 
-//setter(set property)
+//setter(set property):
 // object.property = value;
 
 //method -->method is something that object can do
 // object.function();
 
+//Getting the length:
+document.getElementsByTagName("li").length; //--> gives the number of li elements in the document
 
 //problem: change name of 3rd li
-var changeNameThird = document.getElementsByTagName("li").item(2); //as there is 3 li element, and we have to select 3rd one then use method item(index);
-// document.getElementsByTagName("li") --> gives array
+var changeNameThird = document.getElementsByTagName("li").item(2); //as there is 3 li element, and we have to select 3rd one. i.e use method item(index);
+// document.getElementsByTagName("li") --> gives array of all the li elements, and we can select any element using index. i.e. 0,1,2,3... 
 changeNameThird.innerHTML = "change";
 
 //color of 1rd li using selector method --> select the element similar as CSS
@@ -49,22 +51,16 @@ document.querySelectorAll("li.list")[2].style.color = "blue";
 //change color of 2nd li
 document.getElementsByTagName("li")[1].style.color = "purple"; //[index_ofElement]
 
+//herarcial selector:
+// document.querySelector("#list a"); --> select all the "a" tag inside "list" id
+// document.querySelector("li .item"); //--> select first element with this tag name, it gives only one element as id is unique in the document
+// document.querySelectorAll("li .item"); //--> select all the elements with this tag name, it gives list of all the items
 
-//select by class
-// document.getElementsByClassName("name_ofClass");
+//select by class:
+// document.getElementsByClassName("name_ofClass"); //--> select all the elements with this class name, it gives list of all the items
+// document.getElementsByClassName("name_ofClass")[0]; //--> select first element with this class name
+// document.querySelector(".name_ofClass"); //--> select first element with this class name
 
-//select by id
-// document.getElementById("ID_ofElement");
-
-
-//add class "invisible" in html using javascript
-document.querySelector("button").classList.add("invisible");
-
-//we can perform all the task:
-document.querySelector(".invisible").innerHTML = "button"; //change label of button from click to button.
-
-//remove class "invisible" in html using JS:
-// document.querySelector("button").classList.remove("invisible");
-
-//toggle the query, i.e. if applied then remove, if not applied then add.
-// document.querySelector("button").classList.toggle("invisible");
+//select by id:
+// document.getElementById("ID_ofElement"); //--> select element with this id name, it gives only one element as id is unique in the document
+// document.querySelector("#ID_ofElement"); //--> select element with this id name, it gives only one element as id is unique in the document
