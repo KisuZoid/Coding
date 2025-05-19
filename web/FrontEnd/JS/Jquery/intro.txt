@@ -1,0 +1,19 @@
+JS library "JQuery";
+
+ex:
+//looking inside the html document, clearing the the element that have the selector button (i.e. all the html button element), add the eventListner when click detected, run the function where clearing the h1 selector in the html document and style them with red  color.
+
+pure JS:
+for(i=0; i<document.querySelectorAll("button").length; i++){
+    document.querySelectorAll("botton")[i].addEventListner("click", fuction(){
+        document.querySelector("h1").style.color = "red";
+    });
+}
+
+JQuery:
+$("button").click(fuction()){
+    $("h1").css("color", "red");
+}
+
+JQuery:
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
