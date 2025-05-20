@@ -17,31 +17,52 @@ footer {
 }
 
 .w {
-
+  background-image: url(./images/tom1.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .a {
-
+  background-image: url(./images/tom2.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .s {
-
+  background-image: url(./images/tom4.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .d {
-
+  background-image: url(./images/tom3.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .j {
-
+  background-image: url(./images/snare.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .k {
-
+  background-image: url(./images/crash.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .l {
-
+  background-image: url(./images/kick.png);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .set {
