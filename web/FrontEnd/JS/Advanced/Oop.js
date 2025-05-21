@@ -56,3 +56,37 @@ houseKeeper2.greet();
 console.log(houseKeeper1.yearsOfExperience); // --> this will call the yearsOfExperience property of the object
 console.log(houseKeeper2.name); // --> this will call the name property of the object
 console.log(houseKeeper2.hasWorkPermit); // --> this will call the hasWorkPermit property of the object
+
+//callback function: it is a function that is passed as an argument to another function, and is executed after the other function has completed.
+//for example, in the following code, the greet function is a callback function that is passed as an argument to the setTimeout function. The setTimeout function will execute the greet function after 2 seconds.
+setTimeout(houseKeeper1.greet, 2000); // --> this will call the greet method of the object after 2 seconds
+
+function greet(to) {
+    console.log("Hello, " + to);
+}
+greet("John"); //--> output: Hello, John
+greet("jane", "Doe"); //--> output: Hello, jane Doe
+//this is a special keyword that refers to the current object
+
+//callback function example:
+function anotherEventListner(typesOfEvent, callback){
+    //detect event code...
+
+    var eventThatHappened = {
+        eventType: "keypress",
+        key: "p",
+        durationOfKeyPress: 2
+    }
+
+    if (eventThatHappened.eventType === typesOfEvent) {
+        callback(eventThatHappened);
+    }
+}
+
+anotherEventListner("keypress", function(event) {
+    console.log(event);
+});
+//--> output: {eventType: "keypress", key: "p", durationOfKeyPress: 2}
+//--> this will call the callback function with the event object as an argument
+// explaination: the anotherEventListner function is a function that takes two arguments, typesOfEvent and callback. The typesOfEvent is a string that represents the type of event that we want to listen for, and the callback is a function that will be called when the event occurs. The anotherEventListner function will detect the event and call the callback function with the event object as an argument. In this case, we are listening for a keypress event, and when the event occurs, we are calling the callback function with the event object as an argument. The output will be the event object that was passed to the callback function.
+//--> this is a simple example of how to use callback functions in JavaScript. Callback functions are used to handle asynchronous events, such as user input, network requests, and timers. They allow us to write code that is more flexible and reusable, and they help us to avoid callback hell, which is a situation where we have too many nested callbacks that make the code difficult to read and maintain.
