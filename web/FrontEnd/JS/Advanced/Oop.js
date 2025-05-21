@@ -90,3 +90,8 @@ anotherEventListner("keypress", function(event) {
 //--> this will call the callback function with the event object as an argument
 // explaination: the anotherEventListner function is a function that takes two arguments, typesOfEvent and callback. The typesOfEvent is a string that represents the type of event that we want to listen for, and the callback is a function that will be called when the event occurs. The anotherEventListner function will detect the event and call the callback function with the event object as an argument. In this case, we are listening for a keypress event, and when the event occurs, we are calling the callback function with the event object as an argument. The output will be the event object that was passed to the callback function.
 //--> this is a simple example of how to use callback functions in JavaScript. Callback functions are used to handle asynchronous events, such as user input, network requests, and timers. They allow us to write code that is more flexible and reusable, and they help us to avoid callback hell, which is a situation where we have too many nested callbacks that make the code difficult to read and maintain.
+
+document.addEventListener("keypress", function(event){
+    console.log(event);
+});
+//--> this will call the callback function with the event object as an argument when the key is pressed
