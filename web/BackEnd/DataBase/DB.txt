@@ -1,0 +1,12 @@
+//DataBase
+Types of DataBase:
+    1. SQL DataBase(Structured query Language) --> written in SQL || Resource: https://www.w3schools.com/sql/
+        1. MySQL
+        2. PostgreSQL
+        3. SQL Server
+        4. Oracle
+    2. NoSQL DataBase --> written in JSON or XML
+        1. MongoDB
+        2. Cassandra
+        3. Redis
+        4. Couchbase
