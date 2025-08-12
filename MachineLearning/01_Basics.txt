@@ -61,3 +61,48 @@ Learning Paradigm               ::              Libraries
 >> Types of ML based Learning:
     1. Instance-based learning: The algorithm learns from individual instances of data. (e.g. K-Nearest Neighbors)
     2. Model-based learning: The algorithm learns from a model of the data. (e.g. Bayesian Networks)
+
+>> Challenges in ML:
+    1. Data Collection
+        (Fetch DATA from API or Web Scrapping)
+    2. Insufficient Data/Labelled data : 
+    3. Non representative Data
+        Sample Noise: means the data is not representative of the population.
+        Sample Bias: means the data is biased towards a particular group.
+    4. poor quality data 
+    5. irrelevant features : means the features are not relevant to the problem.
+    6. overfitting*** : model is too complex and fits the noise in the training data. (--> i.e basically ML model just learn the data without understanding that results in poor performance with new set of data)
+    7. underfitting : model is too simple and fails to capture the underlying patterns in the data.
+    8. Software integration
+    9. offline Learning/ Deployment
+    10. cost involved
+
+>> ML Development life cycle:
+    Set of guideline from problem definition to deployment of model. (From idea to product) 
+    1. Frame the problem
+    2. Gathering Data
+        Tools:  using CSV 
+                API calling
+                Web Scraping
+                from large database -> Data warehousing (ETL: extract tranform load) -> data Fetch
+                Data fetch using Clusturing
+    3. Data preprocessing -> data cleaning (i.e. remove duplicate, remove missing values, remove outliers, scaling or standerdization)
+        Probolems: (unclean data)  
+                    noisy data
+                    outlier data
+                    missing data
+                    irrelevant data
+                    data normalization
+                    uncompetable data
+    4. Exploratory Data Analysis (EDA) -> data visualization (i.e. bar chart, scatter plot, histogram) univarient/bivarient and find correlation between data
+    5. Feature engineering and selection (input means feature) 
+    6. Model training, Evaluation and selection + Ensemble Learning (Merge multiple models to boost up performance)
+    7. Model deployment -> model to binary file(using tools like pickle) then convert into API(returns JSON).  
+    8. Model testing
+    9. Optimize -> Scaling the model    
+                Necessary steps:
+                    Model Backup
+                    Data Backup
+                    Load Balancing
+                    Re-train model over a period of time
+                    
