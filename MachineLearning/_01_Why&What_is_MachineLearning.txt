@@ -105,4 +105,10 @@ Learning Paradigm               ::              Libraries
                     Data Backup
                     Load Balancing
                     Re-train model over a period of time
-                    
+
+Job role:
+    Search on anglelist, wellfound(for startUps) or any other job platform.
+    1. Data Scientist
+    2. Machine Learning Engineer
+    3. Data Engineer
+    4. Data Analyst
