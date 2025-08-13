@@ -1,0 +1,8 @@
+>> What are Tensors:
+    Tensor is a multi-dimensional array of numerical values. It is a fundamental data structure in deep learning and is used to represent data in a way that can be processed by neural networks.
+
+    Ex:
+        Tensor of 0 dimension: scalar
+        Tensor of 1 dimension: vector
+        Tensor of 2 dimensions: matrix
+        Tensor of 3 dimensions: 3D array
