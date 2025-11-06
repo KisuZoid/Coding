@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Lab Experiment 02</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #e0e0e0;
+            background: #0f0f23;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .exp-badge {
+            background: rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        /* Cards */
+        .card {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card h3 {
+            color: #a78bfa;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card p {
+            margin-bottom: 1rem;
+            line-height: 1.8;
+            color: #b8b8d1;
+        }
+
+        /* Student Info Grid */
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.2rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .info-box:hover {
+            background: rgba(102, 126, 234, 0.15);
+            transform: translateX(5px);
+        }
+
+        .info-box strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-box span {
+            color: #e0e0e0;
+            font-size: 1.1rem;
+        }
+
+        /* Skills */
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+
+        .skill-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .skill-tag:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Procedure Steps */
+        .procedure-steps {
+            counter-reset: step-counter;
+            list-style: none;
+        }
+
+        .procedure-steps > li {
+            counter-increment: step-counter;
+            margin-bottom: 2rem;
+            padding-left: 4rem;
+            position: relative;
+            background: rgba(102, 126, 234, 0.05);
+            padding: 1.5rem;
+            padding-left: 4rem;
+            border-radius: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .procedure-steps > li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 1rem;
+            top: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .procedure-steps strong {
+            color: #a78bfa;
+            font-size: 1.15rem;
+            display: block;
+            margin-bottom: 0.8rem;
+        }
+
+        .procedure-steps ul {
+            margin-left: 1.5rem;
+            margin-top: 0.8rem;
+        }
+
+        .procedure-steps ul li {
+            margin-bottom: 0.5rem;
+            color: #b8b8d1;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #0a0a14;
+            border: 1px solid #667eea;
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 1rem 0;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .code-block code {
+            color: #7dd3fc;
+            display: block;
+            margin: 0.2rem 0;
+        }
+
+        /* Highlight Boxes */
+        .requirement-box {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 4px solid #8b5cf6;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+
+        .requirement-box ul {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .requirement-box li {
+            margin-bottom: 0.5rem;
+            color: #d8b4fe;
+        }
+
+        .success-box {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            color: #86efac;
+        }
+
+        /* Tech Specs Grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .tech-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .tech-item:hover {
+            background: rgba(102, 126, 234, 0.15);
+            transform: scale(1.05);
+        }
+
+        .tech-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .tech-item span {
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            color: #b8b8d1;
+            text-align: center;
+            padding: 2.5rem;
+            margin-top: 3rem;
+            border-top: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        footer p {
+            margin-bottom: 0.5rem;
+        }
+
+        footer strong {
+            color: #667eea;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .procedure-steps > li {
+                padding-left: 3rem;
+            }
+
+            .procedure-steps > li::before {
+                left: 0.5rem;
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="exp-badge">EXPERIMENT NO: 02</div>
+        <h1>🌐 AWS S3 Static Website Hosting & Lifecycle Management</h1>
+        <p>Deploy a static website using Amazon S3 and manage data using lifecycle policies for cost optimization</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        
+        <!-- Student Info -->
+        <div class="card">
+            <h2>👨‍🎓 Student Information</h2>
+            <div class="student-info">
+                <div class="info-box">
+                    <strong>Name</strong>
+                    <span>Kislay Anand</span>
+                </div>
+                <div class="info-box">
+                    <strong>Registration Number</strong>
+                    <span>23BAI10359</span>
+                </div>
+                <div class="info-box">
+                    <strong>Semester</strong>
+                    <span>Interim Semester 2025-26</span>
+                </div>
+                <div class="info-box">
+                    <strong>Date</strong>
+                    <span id="currentDate"></span>
+                </div>
+            </div>
+
+            <h3>Skills Demonstrated</h3>
+            <div class="skills">
+                <span class="skill-tag">☁️ Amazon S3</span>
+                <span class="skill-tag">📦 Object Storage</span>
+                <span class="skill-tag">🗂️ Lifecycle Management</span>
+                <span class="skill-tag">🔐 Bucket Policy</span>
+                <span class="skill-tag">🌍 Static Website Hosting</span>
+                <span class="skill-tag">💻 HTML/CSS</span>
+            </div>
+        </div>
+
+        <!-- Aim -->
+        <div class="card">
+            <h2>🎯 AIM</h2>
+            <p>To host a static website using Amazon S3 and implement lifecycle management policies for efficient data storage and cost optimization.</p>
+        </div>
+
+        <!-- Requirements -->
+        <div class="card">
+            <h2>📋 REQUIREMENTS</h2>
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa;">Hardware Requirements:</h3>
+                <ul>
+                    <li>Computer with stable internet connection</li>
+                    <li>Minimum 4GB RAM</li>
+                    <li>Modern web browser (Chrome, Firefox, Edge, Safari)</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa;">Software Requirements:</h3>
+                <ul>
+                    <li>AWS Account (Free Tier eligible)</li>
+                    <li>HTML/CSS website files (e.g. index.html)</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa;">Cloud Resources:</h3>
+                <ul>
+                    <li>Amazon S3 Bucket</li>
+                    <li>S3 Storage Classes (Standard, IA, Glacier)</li>
+                    <li>Lifecycle Rules Configuration</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa;">Prerequisites Knowledge:</h3>
+                <ul>
+                    <li>Understanding of AWS S3 and bucket configurations</li>
+                    <li>Basic knowledge of website structure (HTML/CSS)</li>
+                    <li>Concept of data lifecycle and storage cost optimization</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Procedure -->
+        <div class="card">
+            <h2>📝 PROCEDURE</h2>
+            <ol class="procedure-steps">
+                <li>
+                    <strong>Create an S3 Bucket</strong>
+                    <ul>
+                        <li>Open the AWS Management Console and navigate to <strong>S3</strong>.</li>
+                        <li>Click <strong>Create bucket</strong> and enter a unique name (e.g. <code>kisu-first-bucket</code>).</li>
+                        <li>Select a region and uncheck <strong>Block all public access</strong>.</li>
+                        <li>Confirm and click <strong>Create bucket</strong>.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Upload Website Files</strong>
+                    <ul>
+                        <li>Open your new S3 bucket.</li>
+                        <li>Click <strong>Upload</strong> and select your <code>index.html</code> and other website files.</li>
+                        <li>Click <strong>Upload</strong> to store them in the bucket.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Enable Static Website Hosting</strong>
+                    <ul>
+                        <li>Go to the <strong>Properties</strong> tab of your bucket.</li>
+                        <li>Scroll to <strong>Static website hosting</strong> → Click <strong>Edit</strong>.</li>
+                        <li>Select <strong>Enable</strong>, and set the index document as <code>index.html</code>.</li>
+                        <li>Save changes and note down the <strong>Bucket website endpoint</strong> URL.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Configure Public Access via Bucket Policy</strong>
+                    <p>Navigate to the <strong>Permissions → Bucket Policy</strong> section and paste the policy below (replace <em>bucket-name</em> appropriately):</p>
+                    <div class="code-block">
+                        <code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::kisu-first-bucket/*"
+    }
+  ]
+}
+</code>
+                    </div>
+                    <p>Save the policy and verify that the files are now publicly accessible.</p>
+                </li>
+
+                <li>
+                    <strong>Test Your Static Website</strong>
+                    <ul>
+                        <li>Copy the <strong>Website Endpoint</strong> from your bucket properties.</li>
+                        <li>Paste it in your browser (e.g. <code>http://kisu-first-bucket.s3-website.eu-north-1.amazonaws.com</code>)</li>
+                        <li>Your website should now be live.</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Configure Lifecycle Management</strong>
+                    <ul>
+                        <li>Go to your bucket → <strong>Management</strong> tab.</li>
+                        <li>Click <strong>Create lifecycle rule</strong>.</li>
+                        <li>Name it (e.g. <code>ArchiveOldFiles</code>).</li>
+                        <li>Choose to apply to all objects.</li>
+                        <li>Add transitions:
+                            <ul>
+                                <li>Move to Standard-IA after 30 days</li>
+                                <li>Move to Glacier after 90 days</li>
+                                <li>Delete permanently after 365 days</li>
+                            </ul>
+                        </li>
+                        <li>Click <strong>Save</strong>.</li>
+                    </ul>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Technical Specifications -->
+        <div class="card">
+            <h2>⚙️ TECHNICAL SPECIFICATIONS</h2>
+            <div class="tech-grid">
+                <div class="tech-item"><strong>Cloud Provider</strong><span>Amazon Web Services</span></div>
+                <div class="tech-item"><strong>Service</strong><span>Amazon S3</span></div>
+                <div class="tech-item"><strong>Storage Type</strong><span>Object Storage</span></div>
+                <div class="tech-item"><strong>Hosting Type</strong><span>Static Website Hosting</span></div>
+                <div class="tech-item"><strong>Lifecycle Actions</strong><span>Transition / Expiration</span></div>
+                <div class="tech-item"><strong>Storage Classes</strong><span>Standard, IA, Glacier</span></div>
+                <div class="tech-item"><strong>Protocol</strong><span>HTTP</span></div>
+                <div class="tech-item"><strong>Access</strong><span>Public Read via Bucket Policy</span></div>
+                <div class="tech-item">
+                    <strong>Region</strong>
+                    <span>eu-north-1 (Europe – Stockholm)</span>
+                </div>
+                <div class="tech-item"><strong>Cost</strong><span>Free Tier</span></div>
+            </div>
+
+            <div class="status-badge" style="display: block; text-align: center; margin-top: 2rem;">
+                ✅ STATUS: WEBSITE HOSTED & LIFECYCLE CONFIGURED
+            </div>
+        </div>
+
+        <!-- Result -->
+        <div class="card">
+            <h2>✅ RESULT</h2>
+            <p>A static website was successfully hosted on Amazon S3 using the static website hosting feature. The website was made publicly accessible through a proper bucket policy configuration. Lifecycle management rules were created to transition and delete objects based on defined time periods, ensuring optimal storage cost and efficiency.</p>
+            <div class="success-box">
+                <strong>📊 Experiment Status:</strong> Successfully Completed with All Objectives Met ✅
+            </div>
+        </div>
+
+        <!-- Learning Outcomes -->
+        <div class="card">
+            <h2>📚 LEARNING OUTCOMES</h2>
+            <div class="requirement-box">
+                <ul>
+                    <li><strong>Cloud Storage:</strong> Learned to create and configure S3 buckets for website hosting</li>
+                    <li><strong>Website Deployment:</strong> Gained hands-on experience hosting a static website using Amazon S3</li>
+                    <li><strong>Access Control:</strong> Understood the use of bucket policies and permissions</li>
+                    <li><strong>Lifecycle Rules:</strong> Learned to automate storage transitions and deletion</li>
+                    <li><strong>Cost Optimization:</strong> Understood how lifecycle management minimizes S3 storage cost</li>
+                    <li><strong>Static Hosting:</strong> Differentiated between static and dynamic website deployments</li>
+                    <li><strong>Cloud Concepts:</strong> Strengthened knowledge of AWS storage classes and their applications</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>🌐 This Website is Hosted on Amazon S3</strong></p>
+        <p>Experiment 02 - CSE3016 AWS Solution Architecture</p>
+        <p style="margin-top: 1rem; color: #667eea;">Deployed Successfully on AWS S3 with Lifecycle Management</p>
+        <p>&copy; 2025 | All Rights Reserved</p>
+    </footer>
+
+    <script>
+        // Display current date
+        const today = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', options);
+    </script>
+</body>
+</html>
