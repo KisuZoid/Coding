@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Lab Experiment 01</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #e0e0e0;
+            background: #0f0f23;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 20px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .exp-badge {
+            background: rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 20px;
+        }
+
+        /* Cards */
+        .card {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card h3 {
+            color: #a78bfa;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card p {
+            margin-bottom: 1rem;
+            line-height: 1.8;
+            color: #b8b8d1;
+        }
+
+        /* Student Info Grid */
+        .student-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .info-box {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1.2rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .info-box:hover {
+            background: rgba(102, 126, 234, 0.15);
+            transform: translateX(5px);
+        }
+
+        .info-box strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-box span {
+            color: #e0e0e0;
+            font-size: 1.1rem;
+        }
+
+        /* Skills */
+        .skills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 1.5rem;
+        }
+
+        .skill-tag {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .skill-tag:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Procedure Steps */
+        .procedure-steps {
+            counter-reset: step-counter;
+            list-style: none;
+        }
+
+        .procedure-steps > li {
+            counter-increment: step-counter;
+            margin-bottom: 2rem;
+            padding-left: 4rem;
+            position: relative;
+            background: rgba(102, 126, 234, 0.05);
+            padding: 1.5rem;
+            padding-left: 4rem;
+            border-radius: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .procedure-steps > li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 1rem;
+            top: 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .procedure-steps strong {
+            color: #a78bfa;
+            font-size: 1.15rem;
+            display: block;
+            margin-bottom: 0.8rem;
+        }
+
+        .procedure-steps ul {
+            margin-left: 1.5rem;
+            margin-top: 0.8rem;
+        }
+
+        .procedure-steps ul li {
+            margin-bottom: 0.5rem;
+            color: #b8b8d1;
+        }
+
+        /* Code Blocks */
+        .code-block {
+            background: #0a0a14;
+            border: 1px solid #667eea;
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 1rem 0;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .code-block code {
+            color: #7dd3fc;
+            display: block;
+            margin: 0.2rem 0;
+        }
+
+        /* Highlight Boxes */
+        .requirement-box {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 4px solid #8b5cf6;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+        }
+
+        .requirement-box ul {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .requirement-box li {
+            margin-bottom: 0.5rem;
+            color: #d8b4fe;
+        }
+
+        .success-box {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 1.2rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            color: #86efac;
+        }
+
+        /* Tech Specs Grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .tech-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .tech-item:hover {
+            background: rgba(102, 126, 234, 0.15);
+            transform: scale(1.05);
+        }
+
+        .tech-item strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .tech-item span {
+            color: #e0e0e0;
+            font-size: 1rem;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-weight: bold;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            background: linear-gradient(145deg, #1a1a2e, #16213e);
+            color: #b8b8d1;
+            text-align: center;
+            padding: 2.5rem;
+            margin-top: 3rem;
+            border-top: 2px solid rgba(102, 126, 234, 0.3);
+        }
+
+        footer p {
+            margin-bottom: 0.5rem;
+        }
+
+        footer strong {
+            color: #667eea;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .procedure-steps > li {
+                padding-left: 3rem;
+            }
+
+            .procedure-steps > li::before {
+                left: 0.5rem;
+                width: 35px;
+                height: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="exp-badge">EXPERIMENT NO: 01</div>
+        <h1>🚀 AWS EC2 & Apache Web Server Deployment</h1>
+        <p>Launch an EC2 instance using the AWS Management Console and deploy a website using Apache middleware</p>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        
+        <!-- Student Info -->
+        <div class="card">
+            <h2>👨‍🎓 Student Information</h2>
+            <div class="student-info">
+                <div class="info-box">
+                    <strong>Name</strong>
+                    <span>Kislay Anand</span>
+                </div>
+                <div class="info-box">
+                    <strong>Registration Number</strong>
+                    <span>23BAI10359</span>
+                </div>
+                <div class="info-box">
+                    <strong>Semester</strong>
+                    <span>Interim Semester 2025-26</span>
+                </div>
+                <div class="info-box">
+                    <strong>Date</strong>
+                    <span id="currentDate"></span>
+                </div>
+            </div>
+
+            <h3>Skills Demonstrated</h3>
+            <div class="skills">
+                <span class="skill-tag">☁️ AWS EC2</span>
+                <span class="skill-tag">🌐 Apache Server</span>
+                <span class="skill-tag">💻 Linux Administration</span>
+                <span class="skill-tag">🔐 Security Groups</span>
+                <span class="skill-tag">🎨 HTML/CSS</span>
+                <span class="skill-tag">📡 Cloud Computing</span>
+            </div>
+        </div>
+
+        <!-- Aim -->
+        <div class="card">
+            <h2>🎯 AIM</h2>
+            <p>To launch an Amazon EC2 instance on AWS Cloud and deploy a simple static website using the Apache HTTP web server.</p>
+        </div>
+
+        <!-- Requirements -->
+        <div class="card">
+            <h2>📋 REQUIREMENTS</h2>
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa; margin-top: 0;">Hardware Requirements:</h3>
+                <ul>
+                    <li>Computer with internet connection</li>
+                    <li>Minimum 4GB RAM (for local operations)</li>
+                    <li>Web browser (Chrome, Firefox, Safari, or Edge)</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa; margin-top: 0;">Software Requirements:</h3>
+                <ul>
+                    <li>AWS Account (Free Tier eligible)</li>
+                    <li>SSH Client (PuTTY for Windows / Terminal for Mac/Linux)</li>
+                    <li>Text editor (Nano/Vim for server-side editing)</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa; margin-top: 0;">Cloud Resources:</h3>
+                <ul>
+                    <li>AWS EC2 Instance (t3.micro - Free Tier)</li>
+                    <li>Amazon Linux 2023 AMI</li>
+                    <li>8 GB General Purpose SSD (gp3)</li>
+                    <li>Security Group with HTTP and SSH access</li>
+                </ul>
+            </div>
+
+            <div class="requirement-box">
+                <h3 style="color: #a78bfa; margin-top: 0;">Prerequisites Knowledge:</h3>
+                <ul>
+                    <li>Basic understanding of cloud computing concepts</li>
+                    <li>Familiarity with Linux command line</li>
+                    <li>Basic HTML/CSS knowledge</li>
+                    <li>Understanding of web servers and HTTP protocol</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Procedure -->
+        <div class="card">
+            <h2>📝 PROCEDURE</h2>
+            
+            <ol class="procedure-steps">
+                <li>
+                    <strong>Login to AWS Management Console</strong>
+                    <ul>
+                        <li>Open <a href="https://aws.amazon.com/console" target="_blank" style="color: #667eea;">https://aws.amazon.com/console</a> and sign in</li>
+                        <li>Verify your account is in Free Tier eligible status</li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Launch an EC2 Instance</strong>
+                    <ul>
+                        <li>Navigate to <strong>Services → EC2 → Instances → Launch instance</strong></li>
+                        <li>Enter instance name: <code style="color: #7dd3fc;">my-first-web-server</code></li>
+                        <li>Select <strong>Amazon Linux 2023 AMI</strong></li>
+                        <li>Choose instance type: <strong>t3.micro</strong> (Free tier eligible)</li>
+                        <li>Create new key pair: <code style="color: #7dd3fc;">my-first-key</code></li>
+                        <li>Download and securely store the .pem file</li>
+                        <li>Under <strong>Network settings</strong>, configure Security Group:
+                            <ul>
+                                <li>Allow <strong>SSH</strong> (port 22) from your IP</li>
+                                <li>Allow <strong>HTTP</strong> (port 80) from anywhere (0.0.0.0/0)</li>
+                            </ul>
+                        </li>
+                        <li>Review settings and click <strong>Launch Instance</strong></li>
+                        <li>Wait for instance state to become <strong>Running</strong></li>
+                        <li>Note down the <strong>Public IPv4 address</strong></li>
+                    </ul>
+                </li>
+
+                <li>
+                    <strong>Connect to the Instance</strong>
+                    <p style="color: #a78bfa;"><em>Method 1: EC2 Instance Connect (Browser-based - Recommended)</em></p>
+                    <ul>
+                        <li>Select your instance in EC2 Dashboard</li>
+                        <li>Click <strong>Connect</strong> button</li>
+                        <li>Choose <strong>EC2 Instance Connect</strong> tab</li>
+                        <li>Click <strong>Connect</strong> button</li>
+                        <li>Terminal opens in browser</li>
+                    </ul>
+                    
+                    <p style="color: #a78bfa; margin-top: 1rem;"><em>Method 2: SSH from Windows PowerShell</em></p>
+                    <ul>
+                        <li>Place your .pem key file in a known directory</li>
+                        <li>Open PowerShell and navigate to that folder:</li>
+                    </ul>
+                    <div class="code-block">
+                        <code>cd D:\Kislay\AWS</code>
+                    </div>
+                    <ul>
+                        <li>Connect using SSH command:</li>
+                    </ul>
+                    <div class="code-block">
+                        <code>ssh -i "my-first-key.pem" ec2-user@[Your-Public-IP]</code>
+                    </div>
+                </li>
+
+                <li>
+                    <strong>Install Apache Web Server</strong>
+                    <p>Execute the following commands in sequence:</p>
+                    <div class="code-block">
+                        <code># Update system packages</code>
+                        <code>sudo dnf update -y</code>
+                        <code></code>
+                        <code># Install Apache HTTP Server</code>
+                        <code>sudo dnf install httpd -y</code>
+                        <code></code>
+                        <code># Start Apache service</code>
+                        <code>sudo systemctl start httpd</code>
+                        <code></code>
+                        <code># Enable Apache to start automatically on boot</code>
+                        <code>sudo systemctl enable httpd</code>
+                        <code></code>
+                        <code># Verify Apache is running</code>
+                        <code>sudo systemctl status httpd</code>
+                    </div>
+                    <div class="success-box">
+                        <strong>✅ Success Indicator:</strong> You should see "active (running)" displayed in green color.
+                    </div>
+                </li>
+
+                <li>
+                    <strong>Deploy a Website</strong>
+                    <p>Create and edit the main webpage:</p>
+                    <div class="code-block">
+                        <code># Navigate to Apache web directory</code>
+                        <code>cd /var/www/html</code>
+                        <code></code>
+                        <code># Create/edit index.html file</code>
+                        <code>sudo nano /var/www/html/index.html</code>
+                    </div>
+                    <ul>
+                        <li>Add your HTML content (custom website code)</li>
+                        <li>Save file: Press <strong>Ctrl + X</strong></li>
+                        <li>Confirm save: Press <strong>Y</strong></li>
+                        <li>Exit: Press <strong>Enter</strong></li>
+                        <li>Set proper permissions:</li>
+                    </ul>
+                    <div class="code-block">
+                        <code>sudo chmod 644 /var/www/html/index.html</code>
+                    </div>
+                </li>
+
+                <li>
+                    <strong>Access the Website</strong>
+                    <ul>
+                        <li>Open a web browser (Chrome, Firefox, etc.)</li>
+                        <li>Enter your EC2 instance's Public IPv4 address in the address bar:</li>
+                    </ul>
+                    <div class="code-block">
+                        <code>http://[Your-Public-IP-Address]</code>
+                        <code># Example: http://13.51.44.241</code>
+                    </div>
+                    <div class="success-box" style="margin-top: 1rem;">
+                        <strong>🎉 Success!</strong> Your website should now be visible and accessible from anywhere in the world.
+                    </div>
+                </li>
+            </ol>
+        </div>
+
+        <!-- Technical Specifications -->
+        <div class="card">
+            <h2>⚙️ TECHNICAL SPECIFICATIONS</h2>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <strong>Cloud Provider</strong>
+                    <span>Amazon Web Services</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Service</strong>
+                    <span>EC2</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Instance Type</strong>
+                    <span>t3.micro</span>
+                </div>
+                <div class="tech-item">
+                    <strong>AMI</strong>
+                    <span>Amazon Linux 2023</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Web Server</strong>
+                    <span>Apache (httpd)</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Storage</strong>
+                    <span>8 GB gp3 SSD</span>
+                </div>
+                <div class="tech-item">
+                    <strong>vCPUs</strong>
+                    <span>2 cores</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Memory</strong>
+                    <span>1 GB RAM</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Open Ports</strong>
+                    <span>22 (SSH), 80 (HTTP)</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Protocol</strong>
+                    <span>HTTP/1.1</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Region</strong>
+                    <span>[Your AWS Region]</span>
+                </div>
+                <div class="tech-item">
+                    <strong>Cost</strong>
+                    <span>Free Tier</span>
+                </div>
+            </div>
+
+            <div class="status-badge" style="display: block; text-align: center; margin-top: 2rem;">
+                ✅ STATUS: SUCCESSFULLY DEPLOYED
+            </div>
+        </div>
+
+        <!-- Result -->
+        <div class="card">
+            <h2>✅ RESULT</h2>
+            <p>The EC2 instance was successfully launched and configured on AWS Cloud platform. Apache HTTP server was installed and properly configured on the Amazon Linux 2023 instance. A custom static webpage was created and deployed in the web root directory (/var/www/html/). The website was successfully hosted and made accessible to the public internet using the instance's public IP address. Security groups were properly configured to allow HTTP traffic on port 80 and SSH access on port 22. Thus, a fully functional web server was successfully deployed on AWS using EC2 and Apache middleware.</p>
+            
+            <div class="success-box" style="margin-top: 1.5rem;">
+                <strong>📊 Experiment Status:</strong> Successfully Completed with All Objectives Met ✅
+            </div>
+        </div>
+
+        <!-- Learning Outcomes -->
+        <div class="card">
+            <h2>📚 LEARNING OUTCOMES</h2>
+            <div class="requirement-box">
+                <ul>
+                    <li><strong>Cloud Infrastructure:</strong> Gained hands-on experience in launching and managing virtual machines on AWS EC2</li>
+                    <li><strong>Network Security:</strong> Understood the importance of security groups and configured firewall rules for web traffic</li>
+                    <li><strong>Linux Administration:</strong> Developed skills in connecting to remote Linux servers using SSH protocol</li>
+                    <li><strong>Web Server Management:</strong> Learned to install, configure, and manage Apache HTTP server on Linux</li>
+                    <li><strong>Web Deployment:</strong> Successfully deployed a static website on cloud infrastructure</li>
+                    <li><strong>Cloud Computing Concepts:</strong> Understood IaaS (Infrastructure as a Service) and its practical applications</li>
+                    <li><strong>Cost Management:</strong> Learned about AWS Free Tier benefits and how to optimize cloud resource usage</li>
+                    <li><strong>System Administration:</strong> Gained experience in package management using dnf and systemctl service management</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>🌐 This Website is Hosted on AWS EC2 with Apache HTTP Server</strong></p>
+        <p>Experiment 01 - CSE3016 AWS Solution Architecture</p>
+        <p style="margin-top: 1rem; color: #667eea;">Deployed Successfully on Amazon Web Services</p>
+        <p>&copy; 2025 | All Rights Reserved</p>
+    </footer>
+
+    <script>
+        // Display current date
+        const today = new Date();
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = today.toLocaleDateString('en-US', options);
+    </script>
+</body>
+</html>
