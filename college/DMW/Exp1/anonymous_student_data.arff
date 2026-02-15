@@ -1,0 +1,11 @@
+@relation student_data-weka.filters.unsupervised.attribute.Remove-R1-weka.filters.unsupervised.attribute.Remove-R1-weka.filters.unsupervised.attribute.Remove-R1-weka.filters.unsupervised.attribute.ReplaceMissingValues-weka.filters.unsupervised.attribute.ReplaceMissingValues
+
+@attribute Age numeric
+@attribute Gender {M,F}
+@attribute Department {CSE,EEE,MECH}
+@attribute CGPA numeric
+
+@data
+21,M,CSE,8.5
+22,F,EEE,7.8
+21,M,MECH,8.1
