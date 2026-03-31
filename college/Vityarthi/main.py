@@ -8,7 +8,8 @@ from datetime import datetime
 SENSITIVITY      = 500     # minimum contour area to count as motion
 ALERT_COOLDOWN   = 3       # seconds between saved snapshots
 SAVE_SNAPSHOTS   = True    # save image when motion detected
-SNAPSHOT_DIR     = "snapshots"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SNAPSHOT_DIR = os.path.join(BASE_DIR, "snapshots")
 # ───────────────────────────────────────────────────────────────────────────
 
 if SAVE_SNAPSHOTS and not os.path.exists(SNAPSHOT_DIR):
