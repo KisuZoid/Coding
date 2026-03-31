@@ -1,7 +1,10 @@
 # Project Report — Motion Detection Security System
 
+**Name:** Kislay Anand
+**Registration Number:** 23BAI10359
 **Course:** Computer Vision
 **Submission Type:** BYOP — Bring Your Own Project
+**Project Title:** Motion Detection Security System
 
 ---
 

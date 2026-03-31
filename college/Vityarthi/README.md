@@ -107,5 +107,6 @@ motion-detection/
 ---
 
 ## Author
-
+Name: Kislay Anand
+Registration Number: 23BAI10359
 Built as a BYOP capstone project for a Computer Vision course.
