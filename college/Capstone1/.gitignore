@@ -25,7 +25,7 @@ coverage/
 *.tsbuildinfo
 
 # Datasets and model artefacts — never commit
-datasets/
+/datasets/
 data/raw/
 data/interim/
 data/processed/
@@ -44,12 +44,17 @@ outputs/
 mlruns/
 wandb/
 checkpoints/
+ml/experiments/
+
+# Dataset audit generated artifacts (regenerable via scripts)
+ml/datasets/reports/vis_samples/
 
 # Editors and OS
 .vscode/
 .idea/
 .DS_Store
 *.swp
+.~lock.*#
 
 # Tooling
 .playwright/
