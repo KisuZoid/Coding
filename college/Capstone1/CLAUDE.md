@@ -44,11 +44,44 @@ ground-truth labels become available.
 |---|---|
 | Node.js | v22.22.2 (via nvm) |
 | npm | present |
-| Python | 3.13.12 (miniconda3) |
+| Python (default shell) | 3.13.12 (miniconda3) |
 | uv | 0.11.11 — preferred Python dependency manager |
 | Docker | present |
 | Vercel CLI | **not installed** (`npm i -g vercel` if deployment work starts) |
 | n8n CLI | **not installed** |
+
+### AI workstation environment (use this for ML work)
+
+The **`ai`** conda environment is the ML workstation and the only environment with a
+CUDA-enabled PyTorch. Use it for anything that needs `torch`, model training, or
+GPU inference. Do **not** install CUDA/torch runtimes into the base environment.
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh && conda activate ai
+```
+
+Verified in `ai` (2026-09-07):
+
+| Package | Version |
+|---|---|
+| Python | 3.12.13 |
+| torch | 2.5.1+cu121 |
+| torchvision | 0.20.1+cu121 |
+| transformers | 5.9.0 |
+| opencv-python / opencv-contrib-python | 4.13.0.92 |
+| numpy | 2.4.3 |
+| scikit-learn | 1.8.0 |
+| pandas | 2.3.3 |
+| matplotlib | 3.10.9 |
+| mlflow | 3.11.1 |
+
+Hardware: **NVIDIA GeForce RTX 3050 Laptop GPU, ~4 GB VRAM, CUDA 13.0 driver**.
+Treat this as constrained GPU hardware (brief §29): lazy loading, small batches,
+mixed precision, gradient accumulation.
+
+**Not present in `ai`:** `ultralytics`, `pycocotools`, `albumentations`. Add
+`pycocotools` (needed to read COCO segmentation) as a dev/research dependency when
+the dataset-audit work begins; justify any other add.
 
 ---
 
@@ -110,7 +143,15 @@ AutoInspect-X/
 │   ├── research/        # Research scope, problem definition, experiment principles
 │   ├── ml/              # ML engineering guidelines
 │   └── decisions/       # ADRs
-├── .github/workflows/   # CI
+├── ml/
+│   ├── datasets/        # CarDD audit + typed data adapter (cardd_adapter.py, cardd_audit.py)
+│   │   └── reports/     # cardd_audit.json (experiment documentation)
+│   ├── models/          # CarddUNet (smoke U-Net, ADR 0006)
+│   ├── training/        # PyTorch dataset adapter, smoke test, smoke + real trainers, shared loss
+│   ├── evaluation/      # segment. metric harness (metrics.py: IoU/Dice, Phase 4)
+│   └── experiments/     # run records + checkpoints + registry.json (git-ignored)
+├── tests/               # pytest: adapter, dataset, metrics tests (dataset-gated skips)
+├── src/public/          # Demo videos 1-4.mp4 (staged; content unverified)
 ├── init.md              # Session bootstrap protocol
 ├── CLAUDE.md            # This file
 ├── AGENTS.md            # Agent rules
@@ -126,15 +167,20 @@ AutoInspect-X/
 └── .gitignore
 ```
 
+Dataset roots (`datasets/`) are git-ignored; commit `ml/datasets/reports/`
+documentation instead. Key ADRs: 0003 (training/inference separation),
+0004 (ground-truth labelling policy), 0005 (CarDD has no part masks →
+only image-denominator area ratio is derivable), 0006 (segmentation framework =
+raw PyTorch small U-Net).
+
 Planned, and deliberately **not** created yet — create each only when a task
 justifies it:
 
 ```
 apps/web/      apps/api/
-ml/datasets/   ml/models/     ml/training/
-ml/inference/  ml/evaluation/ ml/experiments/
+ml/inference/
 packages/shared/
-scripts/       tests/         automation/n8n/
+scripts/       automation/n8n/
 ```
 
 ### Dependency direction

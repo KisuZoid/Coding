@@ -27,7 +27,7 @@ Do not start implementing until steps 1–8 are done.
 ## 1. Project identity (do not confuse with other repos)
 
 - **Name:** AutoInspect-X
-- **Path:** `/home/kisuzoid/Kislay/Repo/_/Capstone1`
+- **Path:** `/home/kisuzoid/Kislay/Repo/Coding/college/Capstone1`
 - **Type:** Academic capstone research project + supporting product prototype.
 - **Research title:** *AutoInspect-X: Multimodal Deep Learning for Vehicle Damage
   Segmentation and Uncertainty-Aware Repair Cost Estimation*
