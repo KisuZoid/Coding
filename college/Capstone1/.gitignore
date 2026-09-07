@@ -1,0 +1,58 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Datasets and model artefacts — never commit
+datasets/
+data/raw/
+data/interim/
+data/processed/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+*.h5
+*.pkl
+
+# Experiment outputs
+logs/
+runs/
+outputs/
+mlruns/
+wandb/
+checkpoints/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Tooling
+.playwright/
+playwright-report/
+test-results/
+.vercel/
