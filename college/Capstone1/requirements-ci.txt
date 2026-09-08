@@ -1,0 +1,21 @@
+# CPU-runtime subset of the `ai` conda environment (CLAUDE.md tooling table),
+# pinned to the versions verified there on 2026-09-08. Used only by CI on CPU
+# runners; the workstation keeps the CUDA build via conda. GPU training never
+# runs in CI. `onnxruntime`/`aiosqlite` exist in the work env but are not
+# referenced by apps/ ml/ or tests/, so they are intentionally omitted.
+fastapi==0.136.1
+uvicorn==0.46.0
+python-multipart==0.0.27
+httpx==0.28.1
+pydantic==2.12.5
+pydantic-settings==2.10.1
+langgraph==1.1.9
+groq==0.37.1
+langchain-core==1.5.1
+langchain==1.2.15
+opencv-python==4.13.0.92
+numpy==2.4.3
+pillow==12.1.1
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
