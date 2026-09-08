@@ -1459,3 +1459,65 @@ mobile/tablet/desktop; pass typecheck, lint, build, and Playwright.
    the desktop/tablet/mobile emulated viewports in the perf spec, all passing.
 
 ---
+
+## Task 18 — Local runbook (RUNBOOK.md)
+
+**Date:** 2026-09-09
+**Status:** Completed
+
+**Prompt (summary):**
+The user asked how to run everything locally (full stack), confirmed the AI
+workstation environment is activated with `conda activate ai`, and asked to
+write the answer down as `RUNBOOK.md`.
+
+**Steps completed:**
+
+1. Confirmed the local state needed for the runbook: `ai` conda env is the
+   backend/ML runtime; CarDD dataset present at `datasets/CarDD_COCO`;
+   demo checkpoint at `ml/experiments/cardd_baseline_ce/best_checkpoint.pt`;
+   `.env` present with `GROQ_AUTO_INSPECT_API_KEY`; frontend `node_modules`
+   installed; `storage/` + `data/training/` already populated from earlier runs.
+2. Wrote `RUNBOOK.md` covering: quick start (backend `uvicorn apps.api.main:app
+   --reload --port 8000` + frontend `npm run dev`), prerequisites/.env keys,
+   backend run, frontend run, Playwright E2E (`npx playwright test`, system
+   Chrome, `BACKEND_CMD` override), Python quality gates, optional ML research
+   track commands, CI parity, troubleshooting table, and the honesty constraints
+   (DATA_UNAVAILABLE cost, low_confidence demo baseline, never-commit list).
+3. Linked it from the docs: corrected the stale bootstrap-era README status
+   banner and "Getting started" (now points at `conda activate ai` + RUNBOOK),
+   and added `RUNBOOK.md` to the CLAUDE.md repository-layout tree.
+
+**Files created:**
+
+- `RUNBOOK.md`
+
+**Files changed:**
+
+- `README.md` (status banner + getting-started section)
+- `CLAUDE.md` (repository layout tree)
+
+**Files intentionally not created:**
+
+- No new tooling, scripts, or automation — the runbook documents existing
+  commands only; nothing needed to be built to run the stack locally.
+
+**Not done, and why:**
+
+- README still contains stale "Missing input" note about the research document
+  being absent — that document now exists in the repo root; a fuller README
+  refresh is a separate task and out of scope here.
+
+**Verification:**
+
+- All commands in the runbook reproduced against the existing machine state
+  (checkpoint path, dataset path, ports, Playwright config `BACKEND_CMD`,
+  `.env` keys); no servers were started this session.
+
+**Follow-up:**
+
+1. Consider a fuller README refresh (currently still carries bootstrap-era
+   "there is nothing to run yet" remnants and the obsolete missing-input note).
+2. Unresolved items carried forward unchanged: video narrative copy needs
+   visual confirmation; baseline stays demonstration-grade.
+
+---

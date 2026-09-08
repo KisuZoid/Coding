@@ -3,9 +3,9 @@
 **Multimodal Deep Learning for Vehicle Damage Segmentation and Uncertainty-Aware
 Repair Cost Estimation**
 
-> **Status: bootstrap.** This repository currently contains architecture
-> documentation, engineering rules, and tooling configuration only. There is no
-> application code, ML code, database, or user interface yet.
+> **Status: implemented prototype.** Segmentation research baseline, FastAPI
+> backend, and Next.js frontend exist and run locally. See `RUNBOOK.md` for how
+> to run everything.
 
 ---
 
@@ -68,11 +68,14 @@ Everything in `docs/research/` is provisional until it arrives.
 ## Getting started
 
 ```bash
-cp .env.example .env      # fill in locally; never commit .env
-uv sync                   # once Python dependencies are declared
+conda activate ai                                     # CUDA/ML workstation env
+cp .env.example .env                                  # never commit .env
+uvicorn apps.api.main:app --reload --port 8000        # backend
+cd apps/web && npm run dev                            # frontend at :3000
 ```
 
-There is nothing to run yet.
+Full runbook (backend, frontend, Playwright E2E, gates, ML track,
+troubleshooting): `RUNBOOK.md`.
 
 ## Contributing
 

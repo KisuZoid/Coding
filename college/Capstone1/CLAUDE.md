@@ -158,6 +158,7 @@ AutoInspect-X/
 ├── MEMORY.md            # Change log with reasoning
 ├── TASKS.md             # Numbered task history
 ├── LOGIC.md             # Workflow / automation logic
+├── RUNBOOK.md           # Everything on this machine: how to run it locally
 ├── README.md
 ├── CONTRIBUTING.md
 ├── SECURITY.md
