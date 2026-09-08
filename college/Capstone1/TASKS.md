@@ -1341,3 +1341,121 @@ green (see Task 15 verification for the suite state after both tasks).
 **Follow-up:** None for this phase; deployment and the clip-narrative copy
 confirmation are the only remaining product decisions.
 
+## Task 17 — Scroll-driven cinematic intro: MP4 → image-sequence canvas renderer
+
+**Date:** 2026-09-08
+**Status:** Completed
+
+**Prompt (summary):**
+Replace the MP4-video cinematic intro with a scroll-controlled image-sequence
+canvas renderer. The four original videos have been converted to 30 FPS JPEG
+frame sequences in `public/{1..4}/` (symlinked into `apps/web/public/videos`).
+The new system must: use a single `<canvas>` with `requestAnimationFrame` +
+scroll lerp for smooth scrubbing; weight each scene by frame count; use
+`createImageBitmap` with LRU-bounded staged preloading; respect
+`prefers-reduced-motion`; keep narrative overlay, progress bar, and CTA; run on
+mobile/tablet/desktop; pass typecheck, lint, build, and Playwright.
+
+**Steps completed:**
+
+1. **Frame audit.** Inspected all four directories via the symlink: 300 + 240 +
+   133 + 240 = 913 total frames. All named `ezgif-frame-NNN.jpg` (001..N,
+   continuous, no gaps). Three scenes at 1920×1080, Scene 3 at 1280×720. Total
+   compressed ≈ 35 MB.
+2. **Manifest (`lib/cinematic/sequence.ts`).** Data-driven `SCENES` array
+   (scene id, folder, frame count, width, height, start/end global frames, text
+   phases); `frameForProgress(p)` maps 0..1 to `FramePosition` deterministically
+   by global frame count — no modulo arithmetic. `segmentAt(p)` returns the
+   active scene index for text sync.
+3. **Preloader (`lib/cinematic/preload.ts`).** `ScenePreloader` fetches JPEGs and
+   decodes them into `ImageBitmap` (or `HTMLImageElement` fallback) stored in an
+   LRU `SceneCache`. `CinematicPreloader` drives staged loading: scene 1 is kept
+   warm throughout; the next scene is prefetched when the user passes 50% of the
+   current scene; adaptive budget (28 mobile, 60 tablet, 90 desktop); `prune()`
+   releases decoded bitmaps outside the window. No unbounded decoded memory.
+4. **Canvas renderer (`lib/cinematic/canvas.ts`).** Pure `coverRect()` helper
+   computes object-cover draw rect for mixed-resolution scenes with DPR-aware
+   scaling. Canvas backing store capped at 2× DPR.
+5. **`CinematicIntro.tsx` rewritten.** Scroll events only set `targetProgress`.
+   A single rAF loop lerps `currentProgress` (smoothing 0.16, frame-rate-adjusted
+   via `dt`), calls `preloader.update()` for staged loading, draws only when the
+   frame key changes. Canvas resized on `window.resize` with DPR correction.
+   Narrative text fades per scene region. CTA at progress > 0.93.
+6. **Reduced motion.** Early effect reads `prefers-reduced-motion`. Under reduced
+   motion the rAF loop does not run; canvas renders a single static frame and the
+   preloader loads only what is needed.
+7. **Dead code removed.** `lib/video.ts` (old MP4 clip data) is no longer
+   referenced; deleted.
+8. **Playwright (`e2e/cinematic-intro.spec.ts`).** Desktop: brand, canvas, scroll
+   to 50% (frame counter in range), scroll to bottom (CTA). Mobile: canvas
+   attached. Both pass.
+9. **Build/typecheck/lint.** All clean.
+
+**Files created:**
+
+- `apps/web/lib/cinematic/sequence.ts`
+- `apps/web/lib/cinematic/preload.ts`
+- `apps/web/lib/cinematic/canvas.ts`
+- `apps/web/e2e/cinematic-intro.spec.ts`
+
+**Files changed:**
+
+- `apps/web/components/CinematicIntro.tsx` (complete rewrite)
+
+**Files deleted:**
+
+- `apps/web/lib/video.ts` (dead code — old MP4 clip data)
+
+**Verification:**
+
+- `npm run typecheck` → clean
+- `npm run lint` → clean
+- `npm run build` → OK (static pages generated)
+- `npx playwright test e2e/cinematic-intro.spec.ts --project=desktop` → 2 passed
+
+**Follow-up (2026-09-08, all done):**
+
+10. **Stale-server poisoning (debugging).** An unreaped `next-server` from the
+    first build held port 3000; later `npm run start` silently failed with
+    `EADDRINUSE` (output swallowed inside `( ... & )`), so every debug run hit
+    the OLD un-instrumented build. `rg` on `.next/static/chunks/` also gave a
+    false negative (minified chunk treated as binary); `strings` confirmed the
+    fresh build was fine. Resolution: `kill -9` the real `next-server` PID from
+    `ss -tlnp`, then restart.
+11. **Root-cause bug fixed — frame never drew while idle.** `renderFrame` was
+    gated by `lastDrawnRef.current !== frameKey` and set `lastDrawnRef` on EVERY
+    call, including when the requested frame was not yet decoded. With progress
+    parked at frame 1/1, the key never changed again, so the canvas stayed black
+    forever even after decoding finished. Fix: `renderFrame` now returns a
+    boolean (`true` only when a bitmap was actually drawn) and the tick loop sets
+    `lastDrawnRef` only on success, so it re-tries each tick until drawable.
+12. **Perf spec (`apps/web/e2e/cinematic-performance.spec.ts`)** — measures time
+    to first frame, rAF cadence under scroll, downsampled canvas-frame hashes,
+    JS heap growth after a full scrub + rapid back-and-forth, and upward-scroll
+    support (frame counter must fall, not reset). Passes on desktop/tablet/mobile.
+13. **Measured (headless Chrome, 1280×900, production build):**
+
+    - Time to first cinematic frame: **1532 ms** after navigation (decode-bound;
+      headless software rendering; 73-frame prefetch window). Gated: within 15 s.
+    - Slow-down scrub rAF: **avg 17.1 ms/tick, 14/496 ticks > 17.5 ms** (~60 FPS).
+    - Heap before scroll: **4.4 MB** → after scrub storm: **5.9 MB (growth 1.5 MB)**.
+      LRU preloader keeps decoded-bitmap memory bounded.
+    - Upward scroll: frame counter falls correctly; CTA reachable at bottom.
+14. **Test portability fix.** The frame counter is styled `hidden sm:block`
+    (intentional on small screens); `e2e/cinematic-intro.spec.ts` now asserts it
+    only when viewport ≥ 640 px. Full suite: 9/9 passed across 3 projects.
+15. **Temporary debug instrumentation removed** from component and preloader
+    (`__cinematicDbg`, `__cinematicEffectRan`, `__cinematicTicks`,
+    `__cinematicPreloaders`, `__preloadStats`). Prod-safe counters
+    `window.__cinematicDraws` / `__cinematicFirstDrawAt` remain (used by the perf
+    spec).
+
+**Follow-up:**
+
+1. Visual confirmation of narrative copy against actual frames (needs a
+   vision-capable reviewer; this agent cannot see images).
+2. Mobile real-device performance remains unmeasured in Playwright headless;
+   budget/`SCROLL_VH` (380) may need tuning on physical hardware. Measured for
+   the desktop/tablet/mobile emulated viewports in the perf spec, all passing.
+
+---

@@ -756,3 +756,77 @@ absolute-root tests.
 3. The baseline stays demonstration-grade (low_confidence usually true) — any
    believability improvement is a research-track decision, decoupled from the
    product build.
+
+## 2026-09-08 — Scroll-driven cinematic intro: MP4 → image-sequence canvas
+
+**Change:**
+Replaced the MP4-video cinematic intro (4 crossfading `<video>` elements
+with `currentTime` seek from scroll) with a scroll-controlled image-sequence
+canvas renderer. The four original videos have been converted to 30 FPS JPEG
+frame sequences (300 + 240 + 133 + 240 = 913 frames, ~35 MB) in `public/{1..4}/`
+and are served via the existing `apps/web/public/videos` symlink. New files:
+`lib/cinematic/sequence.ts` (manifest + frame mapping), `lib/cinematic/preload.ts`
+(LRU-bounded `createImageBitmap` preloader with staged loading — scene 1 kept
+warm, later scenes prefetched progressively; adaptive budget 28/60/90 by
+viewport), `lib/cinematic/canvas.ts` (object-cover DPR-aware draw helper).
+`CinematicIntro.tsx` rewritten: rAF smoothing loop with frame-rate-adjusted
+lerp (`smoothing = 0.16`), draws only when the frame key changes, no DOM
+explosion. Reduced-motion: static frame, no scrubbing. Dead code `lib/video.ts`
+deleted. Narrative copy inherited (neutral, pending vision review).
+
+**Reasoning:**
+The original MP4-seek approach felt jerky during scroll-driven control because
+browsers implement `currentTime` seek at a coarse granularity and the four
+videos were crossfaded independently. Image-sequence scrubbing gives per-frame
+deterministic control: scroll progress → global frame → scene + local frame →
+canvas draw, with no browser video codec variability. The `createImageBitmap`
+path avoids the per-frame decode hop that `<img>` or `drawImage(<img>)` would
+hit. Staged preloading keeps RAM bounded while ensuring scene 1 is always ready
+to draw.
+
+**Current logic / state after the change:**
+
+- `apps/web/lib/cinematic/sequence.ts`: `SCENES` array (913 total frames, each
+  scene weighted by frame count), `frameForProgress(p)`, `segmentAt(p)`, `sceneUrl()`.
+- `apps/web/lib/cinematic/preload.ts`: `CinematicPreloader` manages four
+  `ScenePreloader` instances; each uses `createImageBitmap` with an LRU cache
+  (budget adaptive by viewport width + DPR); `prune()` releases bitmaps outside
+  the prefetch window.
+- `apps/web/lib/cinematic/canvas.ts`: `coverRect()` pure helper.
+- `apps/web/components/CinematicIntro.tsx`: canvas + sticky 380vh section +
+  rAF lerp + scroll events set target, not current, progress; narrative fades
+  per scene textStart/textEnd; CTA at > 0.93; `prefers-reduced-motion` = static
+  frame.
+- `apps/web/lib/video.ts` deleted (dead code; no consumer remains).
+- `apps/web/e2e/cinematic-intro.spec.ts` (2 tests: desktop scroll, mobile canvas).
+
+**Fix applied (2026-09-08):**
+
+The "frame never draws while idle" symptom was NOT a server staleness bug (that
+was a separate red herring: an unreaped `next-server` held port 3000 and later
+starts failed silently, so debug runs hit a stale pre-instrumentation build; also
+`rg` on minified chunks gave a false "not found" — use `strings`). Real root
+cause in `CinematicIntro.tsx`: the tick loop set `lastDrawnRef.current` on every
+call even when the frame wasn't decoded yet, so while progress stayed parked at
+frame 1/1 the guard `frameKey !== lastDrawnRef.current` blocked every future
+draw. `renderFrame` now returns `true` only when a bitmap was actually drawn and
+the tick advances `lastDrawnRef` only on success. Implemented the same guard
+everywhere `renderFrame` is called (reduced-motion path parks on last frame).
+
+**Measured performance (production build, headless Chrome 1280×900):**
+
+- First cinematic frame at ~1532 ms (decode-bound, 73-frame prefetch window).
+- Slow-screen scrub: avg 17.1 ms/tick, 14/496 ticks > 17.5 ms (~60 FPS).
+- Heap 4.4 → 5.9 MB after a full scrub + rapid back-and-forth (growth 1.5 MB) —
+  LRU keeps decoded bitmaps bounded; heap gate < 350 MB.
+- Upward scroll works; CTA reachable; all 9 Playwright runs pass (3 projects).
+- Debug hooks removed; `window.__cinematicDraws` / `__cinematicFirstDrawAt`
+  retained (consumed by `e2e/cinematic-performance.spec.ts`).
+
+**Open questions:**
+
+1. Narrative copy needs visual confirmation (agent cannot see frames).
+2. Mobile real-device performance not yet measured; budget may need tightening.
+3. MP4 files remain in `public/` — not deleted, only unused by the cinematic.
+
+---
