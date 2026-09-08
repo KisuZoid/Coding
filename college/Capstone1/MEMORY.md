@@ -830,3 +830,42 @@ everywhere `renderFrame` is called (reduced-motion path parks on last frame).
 3. MP4 files remain in `public/` — not deleted, only unused by the cinematic.
 
 ---
+
+## 2026-09-09 — Local runbook (RUNBOOK.md) + stale README surfaced
+
+**Change:**
+Wrote `RUNBOOK.md`, the single how-to-run-everything reference for this
+machine: quick start, prerequisites + `.env` keys, backend (`uvicorn
+apps.api.main:app --reload --port 8000` in `ai`), frontend (`npm run dev`),
+Playwright E2E, Python quality gates, optional ML track commands, CI parity,
+troubleshooting, and honesty constraints. Linked from `README.md` (status
+banner + Getting Started now say `conda activate ai` and point at the runbook)
+and added to the `CLAUDE.md` layout tree. Recorded as Task 18.
+
+**Reasoning:**
+"How do I run this locally" was not written down anywhere — `README.md` was
+still the bootstrap draft claiming "there is nothing to run yet", which is
+actively misleading now that the backend, frontend, ML baseline, and storage
+all exist and are runnable. The runbook records verified machine state rather
+than inventing setup steps (env activations, git-ignored checkpoint/dataset
+paths, Playwright's `channel: "chrome"` and `BACKEND_CMD`).
+
+**Current logic / state after the change:**
+
+- `RUNBOOK.md` is the authoritative local-run reference; README and CLAUDE.md
+  link to it. The "how do I run it" question is now answerable from the repo.
+- Confirmed machine state used by the doc: `.env` holds the Groq key;
+  `datasets/CarDD_COCO` and
+  `ml/experiments/cardd_baseline_ce/best_checkpoint.pt` are present; frontend
+  `node_modules` installed; `storage/` and `data/training/` exist from earlier
+  runs.
+
+**Open questions:**
+
+1. README still carries bootstrap-era remnants (the obsolete "Missing input /
+   research document absent" note, and other stale claims). A fuller README
+   refresh was explicitly left out of this task; recommended as follow-up.
+2. Carried forward unchanged: video narrative copy needs visual confirmation;
+   baseline stays demonstration-grade (low_confidence usually true).
+
+---
