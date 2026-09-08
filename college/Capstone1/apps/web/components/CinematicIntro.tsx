@@ -1,168 +1,249 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { CLIPS, SEGMENTS, TOTAL_SECONDS, frameFor } from "@/lib/video";
+import { coverRect } from "@/lib/cinematic/canvas";
+import { CinematicPreloader } from "@/lib/cinematic/preload";
+import { SCENES, TOTAL_FRAMES, frameForProgress, sceneUrl, segmentAt } from "@/lib/cinematic/sequence";
+
+const BASE_URL = (scene: number, frame: number) => sceneUrl(scene, frame);
+const COUNTS = SCENES.map((s) => s.frameCount);
+
+/** Frames of scroll travel assigned to the cinematic section. */
+const SCROLL_VH = 380;
+
+/** Settled smoothing factor for progress interpolation. */
+const SMOOTHING = 0.16;
 
 /**
- * Scroll-driven cinematic intro (Phase O).
+ * Scroll-driven cinematic intro rendered from the 30 FPS image sequences in
+ * /videos/{1..4}. One continuous timeline: scroll progress -> normalized
+ * progress -> global frame -> scene + local frame -> canvas draw.
  *
- * One ~300vh section pins a full-screen stage; scroll progress is mapped onto a
- * single 30.42 s timeline and each clip's <video>.currentTime is seeked to the
- * matching frame. Videos alternate by crossfade, and the narrative copy overlays
- * fade per segment. With prefers-reduced-motion the auto-seek is disabled and
- * the clips simply sit at their first frame (copy still advances by segment).
+ * Scroll events only set a *target* progress; a requestAnimationFrame loop
+ * lerps the *current* progress toward it so motion is smooth in both
+ * directions and responsive to quick scrolls. Frames are decoded on demand by
+ * a bounded preloader and drawn to a single high-DPI canvas (no DOM explosion).
  *
- * Narrative copy lives in lib/video.ts. It is deliberately neutral pending
- * visual confirmation of clip content.
+ * prefers-reduced-motion: the fixed scenes collapse to a static, reduced
+ * sequence — copy still advances but no continuous frame scrubbing occurs.
  */
 export default function CinematicIntro() {
   const holderRef = useRef<HTMLDivElement>(null);
-  const videoRefs = useRef<Array<HTMLVideoElement | null>>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const preloadRef = useRef<CinematicPreloader | null>(null);
+  const currentProgressRef = useRef(0);
+  const targetProgressRef = useRef(0);
   const rafRef = useRef(0);
-  const [progress, setProgress] = useState(0);
-  const [segment, setSegment] = useState(0);
+  const lastDrawnRef = useRef<string>("");
+  const reduceMotionRef = useRef(false);
 
+  const [progress, setProgress] = useState(0);
+
+  const initPreloader = useCallback(() => {
+    if (!preloadRef.current) preloadRef.current = new CinematicPreloader(BASE_URL, COUNTS);
+  }, []);
+
+  // Draw one frame to the canvas.
+  const draw = useCallback((img: ImageBitmap | HTMLImageElement) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Lightweight counters for the browser performance suite (harmless, prod-safe).
+    const g = window as unknown as { __cinematicDraws?: number; __cinematicFirstDrawAt?: number };
+    g.__cinematicDraws = (g.__cinematicDraws ?? 0) + 1;
+    if (g.__cinematicDraws === 1) g.__cinematicFirstDrawAt = performance.now();
+
+    const cssW = canvas.clientWidth || canvas.width;
+    const cssH = canvas.clientHeight || canvas.height;
+    const rect = coverRect(
+      { width: img.width, height: img.height },
+      { width: cssW, height: cssH },
+      canvas.width / cssW,
+      canvas.height / cssH,
+    );
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img as CanvasImageSource, rect.dx, rect.dy, rect.dw, rect.dh);
+  }, []);
+
+  const renderFrame = useCallback(
+    (p: number): boolean => {
+      const pos = frameForProgress(p);
+      const preloader = preloadRef.current;
+      if (!preloader) return false;
+      const img = preloader.getFrame(pos.scene.id, pos.localFrame);
+      if (!img) return false; // frame not decoded yet; keep last frame (no flash) and retry next tick
+      draw(img);
+      return true;
+    },
+    [draw],
+  );
+
+  // Scroll -> target progress.
   useEffect(() => {
     const onScroll = () => {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        const el = holderRef.current;
-        if (!el) return;
-        const travel = el.scrollHeight || el.getBoundingClientRect().height;
-        const span = travel - window.innerHeight;
-        if (span <= 0) return;
-        const rect = el.getBoundingClientRect();
-        const p = Math.min(1, Math.max(0, -rect.top / span));
-        setProgress(p);
-        setSegment(frameFor(p).clipIndex);
-      });
+      const el = holderRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const span = rect.height - window.innerHeight;
+      if (span <= 0) return;
+      const p = Math.min(1, Math.max(0, -rect.top / span));
+      targetProgressRef.current = p;
+      setProgress(p);
     };
-
-    const onLoaded = () => onScroll();
-
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onLoaded);
-    onLoaded();
+    window.addEventListener("resize", onScroll);
+    onScroll();
     return () => {
-      cancelAnimationFrame(rafRef.current);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onLoaded);
+      window.removeEventListener("resize", onScroll);
     };
   }, []);
 
+  // Reduced motion detection (read before the rAF loop wires up).
   useEffect(() => {
-    let reduceMotion = false;
     try {
-      reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      reduceMotionRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     } catch {
-      reduceMotion = false;
+      reduceMotionRef.current = false;
     }
-    if (reduceMotion) return;
+  }, []);
 
-    const { clipIndex, seconds } = frameFor(progress);
-    videoRefs.current.forEach((video, i) => {
-      if (!video) return;
-      if (i === clipIndex) {
-        video.pause();
-        try {
-          if (Math.abs(video.currentTime - seconds) > 0.3) video.currentTime = seconds;
-        } catch {
-          /* media not ready — retry on next frame */
-        }
-      } else {
-        video.pause();
+  // rAF smoothing loop.
+  useEffect(() => {
+    initPreloader();
+
+    if (reduceMotionRef.current) {
+      // Reduced motion: park on the final scene's last frame; no scrubbing.
+      preloadRef.current?.update(4, SCENES[3].frameCount);
+      renderFrame(1); // last frame of the sequence
+      return () => {
+        preloadRef.current?.clear();
+      };
+    }
+
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(64, now - last);
+      last = now;
+      const cp = currentProgressRef.current;
+      const tp = targetProgressRef.current;
+      const k = 1 - Math.pow(1 - SMOOTHING, dt / 16.7);
+      currentProgressRef.current = cp + (tp - cp) * k;
+
+      const pos = frameForProgress(currentProgressRef.current);
+      const preloader = preloadRef.current;
+      if (preloader) {
+        preloader.update(pos.scene.id, pos.localFrame);
       }
-    });
-  }, [progress]);
 
-  const active = SEGMENTS[segment];
-  const atEnd = progress > 0.92;
+      const frameKey = `${pos.scene.id}/${pos.localFrame}`;
+      if (frameKey !== lastDrawnRef.current && renderFrame(currentProgressRef.current)) {
+        lastDrawnRef.current = frameKey;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [initPreloader, renderFrame]);
+
+  // DPR-aware canvas sizing.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const recompute = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2x
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      preloadRef.current?.onResize();
+    };
+    recompute();
+    window.addEventListener("resize", recompute);
+    return () => window.removeEventListener("resize", recompute);
+  }, []);
+
+  const segment = segmentAt(progress);
+  const active = SCENES[segment]?.text ?? SCENES[0].text;
+  const atEnd = progress > 0.93;
+  const decade = Math.round(progress * 10) / 10;
 
   return (
-    <div ref={holderRef} className="relative h-[320vh] cinematic-scroll">
+    <div
+      ref={holderRef}
+      className="relative cinematic-scroll"
+      style={{ height: `${SCROLL_VH}vh` }}
+      aria-label="AutoInspect-X introduction"
+    >
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
-        {/* Video stage */}
-        {CLIPS.map((clip, i) => (
-          <video
-            key={clip.src}
-            ref={(el) => {
-              videoRefs.current[i] = el;
-            }}
-            src={clip.src}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${
-              i === segment ? "opacity-100" : "opacity-0"
-            }`}
-            muted
-            playsInline
-            preload="metadata"
-            loop
-            aria-hidden
-          />
-        ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 to-black/85" />
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 h-full w-full"
+          aria-hidden
+        />
+        {/* Subtle vignette to keep text legible without killing the image. */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/30" />
 
-        {/* Narrative overlay */}
+        {/* Narrative overlay — fades in/out per scene region. */}
         <div
-          key={segment}
-          className="absolute inset-x-0 bottom-24 space-y-4 px-6 text-center text-white sm:bottom-28 sm:px-12"
+          className="absolute inset-x-0 bottom-24 px-6 text-center text-white transition-opacity duration-500 sm:bottom-28 sm:px-12"
+          style={{
+            opacity:
+              progress >= (SCENES[segment]?.textStart ?? 0) && progress <= (SCENES[segment]?.textEnd ?? 1)
+                ? 1
+                : 0,
+          }}
         >
-          <p className="animate-[pulse-soft_1.2s_ease-in-out] text-xs font-semibold tracking-[0.3em] text-amber-300/90 uppercase sm:text-sm">
+          <p className="text-xs font-semibold tracking-[0.3em] text-amber-300/90 uppercase sm:text-sm">
             {active.eyebrow}
           </p>
-          <h2 className="mx-auto max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-5xl">
+          <h2 className="mx-auto mt-3 max-w-3xl text-3xl font-semibold leading-tight text-white sm:text-5xl">
             {active.title}
           </h2>
-          <p className="mx-auto max-w-xl text-sm leading-relaxed text-slate-200/90 sm:text-base">
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-slate-200/90 sm:text-base">
             {active.body}
           </p>
         </div>
 
-        {/* Progress */}
+        {/* Scroll progress bar */}
         <div className="absolute inset-x-0 bottom-0 h-1 bg-white/10">
           <div
-            className="h-full bg-amber-400 transition-[width] duration-150 ease-linear"
-            style={{ width: `${progress * 100}%` }}
+            className="h-full bg-amber-400"
+            style={{ width: `${Math.round(decade * 100)}%` }}
           />
         </div>
 
-        {/* Timeline ruler */}
-        <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col items-center gap-3 sm:flex">
-          {SEGMENTS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-2 w-2 rounded-full ${
-                i <= segment ? "bg-amber-400" : "bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Scroll hint */}
+        {/* Scroll hint, hidden near the end */}
         {!atEnd && (
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] tracking-widest text-white/60 uppercase">
             Scroll
           </div>
         )}
 
-        {/* Call to action */}
+        {/* Call to action at the end */}
         <div
-          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-700 ${
+          className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 transition-opacity duration-700 ${
             atEnd ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         >
+          <h2 className="max-w-xl px-6 text-center text-3xl font-semibold text-white sm:text-4xl">
+            Talk to AutoInspect-X
+          </h2>
           <Link
             href="/demo"
             className="rounded-full bg-amber-400 px-8 py-4 text-base font-semibold text-black shadow-lg shadow-amber-400/30 transition hover:bg-amber-300"
           >
-            Start an inspection
+            Start Inspection
           </Link>
         </div>
 
+        {/* Total frame counter (subtle, informational) */}
         <p className="absolute right-4 bottom-6 hidden text-[10px] tracking-widest text-white/40 uppercase sm:block">
-          {String(Math.round(progress * TOTAL_SECONDS * 10) / 10).padStart(4, " ")} s /{" "}
-          {TOTAL_SECONDS.toFixed(1)} s
+          frame {Math.round(progress * (TOTAL_FRAMES - 1)) + 1} / {TOTAL_FRAMES}
         </p>
       </div>
     </div>
