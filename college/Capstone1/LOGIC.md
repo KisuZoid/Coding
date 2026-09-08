@@ -111,3 +111,50 @@ Placement rules:
 A form automation, if it is built, must also record: which form, where
 submissions land, what validation runs, and what the user-visible confirmation
 is.
+
+---
+
+### Workflow: CI — backend gates, frontend gates, Playwright browser E2E
+
+**Platform:** GitHub Actions (per-repository workflow)
+
+**Trigger:** `push` / `pull_request` (any branch)
+
+**Owner:** repository maintainers (no external credentials)
+
+**Inputs:** the repository at the pushed/PR commit. No secrets — the backend
+runs with CPU runtime deps pinned in `requirements-ci.txt`; the Groq key is
+never required on CI (tests use the rule-based Groq service).
+
+**Steps:**
+
+1. **backend — gates** (ubuntu-latest): checkout; Python 3.12; `uv sync --group dev` +
+   `uv pip install --python .venv -r requirements-ci.txt`; then
+   `ruff check apps/ ml/ tests/ conftest.py`, `ruff format --check …`,
+   `mypy apps/ ml/ tests/` (strict), `pytest tests/`. The committed demo
+   checkpoint is git-ignored, so the real-engine test skips exactly as it does
+   locally — skipping is a known-and-documented state, never a failure.
+2. **frontend — gates** (ubuntu-latest, cwd `apps/web`): `npm ci`; `npm run lint
+   -- --max-warnings=0`; `npm run typecheck`; `npm run build`.
+3. **e2e — Playwright** (ubuntu-latest, `needs: [backend, frontend]`, cwd
+   `apps/web`): backend venv installed and put on `PATH`; `npm ci`; `npm run
+   build`; `npx playwright install chrome`; `npx playwright test` with
+   `BACKEND_CMD` exported so the Playwright config starts `uvicorn` from the CI
+   venv instead of the default conda launcher. The config's `webServer` starts
+   backend (:8000) and `next start` (:3000).
+
+**Outputs:** a green/critical summary per commit; no artefacts are published.
+
+**Credentials / environment variables used:**
+
+- `BACKEND_CMD` (workflow `env`, e2e job) — overrides the Playwright config's
+  default backend launcher; contains no secrets.
+- `GROQ_AUTO_INSPECT_API_KEY` is intentionally **not** set on CI.
+
+**Failure behaviour:** a job failure marks the commit red; retries via `retries`
+are not configured — a rerun is manual. No alerting/dead-letter handling is
+needed (pure evaluation, no side effects).
+
+**Idempotency:** safe to re-run — build outputs (`.next`, venv) are ephemeral
+per-run; the only persistent writes would be storage/training dirs, which live
+in fresh CI checkouts.

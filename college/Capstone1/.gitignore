@@ -29,6 +29,10 @@ coverage/
 data/raw/
 data/interim/
 data/processed/
+
+# Runtime application storage — never commit
+/storage/
+/data/training/
 *.pt
 *.pth
 *.onnx
