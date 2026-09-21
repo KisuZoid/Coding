@@ -1785,3 +1785,87 @@ non-blocking stage of `/analyze`, type every failure, and re-verify all gates.
 - Working tree still uncommitted (supervisor may want a commit next).
 
 ---
+## Task 22 — Chat/inspection UI refinish: full-screen AI inspection workspace
+
+**Date:** 2026-09-22
+**Status:** Completed
+
+**Prompt (summary):**
+Refine the main chat/inspection interface into a polished full-screen AI
+assistant without touching backend/model/LLM logic. Full-viewport shell
+(100dvh), professional ChatGPT-like hierarchy, clickable top-left brand ->
+`/`, refined brand lockup + restrained amber, new header status/action,
+redesigned messages/composer/attachment/loading/empty states, analysis fully
+inside the chat, quality-fail retake flow in-chat, one scroll region, a11y,
+responsive at 390×844 / 768×1024 / 1280×900, updated Playwright coverage.
+
+**Steps completed:**
+
+1. App shell (`DemoJourney.tsx`): `h-dvh` flex layout (header flex-none,
+   conversation flex-1 min-h-0, composer flex-none) — page never scrolls,
+   one scroll region only. Header content in a `max-w-6xl` container;
+   notices/consent/disclaimer moved INTO the conversation so analysis stays in
+   the chat. Removed the big red offline/error panels.
+2. Header: brand lockup (BrandMark shield + wordmark) wrapped in
+   `<Link href="/">` (aria-label, focus ring, hover state) — navigates to `/`.
+   Subtle `● API online` status indicator + proper "New inspection" button
+   (both keep their exact, test-asserted labels).
+3. `ChatPanel.tsx` rewritten: single `.chat-scroll` region with smooth
+   auto-scroll that respects the user ("stay put when reading older messages");
+   user messages = compact right-aligned amber bubble (kept `bg-amber-400`);
+   assistant replies = clean left text with NO enclosing card.
+4. In-chat analysis block: "MODEL FINDING" eyebrow, overlay image
+   (rounded, object-contain, dark backing, alt kept), "Detected damage"
+   chips, "Inspection details" rows (detected region / mean confidence /
+   damage area from the real API fields), low-confidence note. Adds
+   `mean_confidence`/`damage_fraction`/`quality_reasons` to `ChatMessage`
+   (frontend-only; no backend change).
+5. Quality-fail block: "Photo quality" eyebrow + required bullets
+   (in focus / context / lighting, else real `quality_reasons`) + **Retake
+   photo** button that reopens the composer picker.
+6. Composer: premium bar (attachment thumb + "ready to analyze" hint + remove;
+   paperclip button, centered input, Send button, focus rings, disabled states,
+   Enter behavior preserved, placeholder unchanged).
+7. Empty state: brand mark + "Vehicle damage inspection, powered by computer
+   vision." + attach-photo button. Loading: "Analyzing the submitted vehicle
+   image…" with pulsing dots (gated to photo sends). Amended `globals.css`
+   (`msg-in` animation, chat scrollbar, reduced-motion).
+8. Added `e2e/shell.spec.ts` (brand route both directions, shell fills
+   viewport w/o page scroll, composer anchored near bottom, inline attach +
+   ready-to-analyze + remove, chat turns) + engine-gated post-analysis
+   follow-up chat; updated `composer.spec.ts` (`bg-slate-800` -> new
+   `[data-message-role="assistant"]` marker) — no tests removed.
+
+**Files created:**
+
+- `apps/web/components/demo/BrandMark.tsx`
+- `apps/web/e2e/shell.spec.ts`
+
+**Files changed:**
+
+- `apps/web/components/demo/DemoJourney.tsx` (shell + header + in-conversation
+  notices/consent/disclaimer + new message fields)
+- `apps/web/components/demo/ChatPanel.tsx` (rewrite)
+- `apps/web/components/demo/ConsentBanner.tsx` (subtle restyle, texts kept)
+- `apps/web/lib/types.ts` (`ChatMessage` +quality fields)
+- `apps/web/app/globals.css` (msg animation, scrollbar, reduced motion)
+- `apps/web/e2e/composer.spec.ts` (assistant selector to new marker)
+
+**Verification:**
+
+- `npm run lint` clean; `npm run typecheck` clean; `npm run build` clean.
+- Playwright (`REUSE_BACKEND=1` against the running fixed backend, live engine
+  + checkpoint): **34 passed, 8 intended skips** (engine journeys + attachment
+  run once on desktop).
+- Programmatic layout QA at 1280×900 / 768×1024 / 390×844: shell == viewport,
+  header full-width on top, conversation between header and bottom-anchored
+  composer, no horizontal overflow (scrollWidth == clientWidth), no page-level
+  scroll (scrollH == innerH), "New inspection" resets to the empty state.
+- Visual screenshots saved for human review (assistant cannot view images):
+  `/tmp/opencode/ui-empty-*.png`, `ui-attach-*.png`, `ui-analyzed-desktop2.png`,
+  `ui-followup-desktop2.png`.
+
+**Next:** commit the whole photo-first working tree (Task 20 + Task 21 + Task 22)
+when the user asks; A2/A4 + RQ2 research steps remain open.
+
+---

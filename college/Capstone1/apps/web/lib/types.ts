@@ -84,8 +84,13 @@ export interface ChatMessage {
   /** Inline result attachment for an assistant analysis message. */
   overlay_png_base64?: string;
   quality_status?: string;
+  quality_reasons?: string[];
   classes_present?: Record<string, string>;
   low_confidence?: boolean;
+  /** 0..1 mean per-pixel confidence across predicted classes. */
+  mean_confidence?: number;
+  /** 0..1 fraction of image pixels covered by predicted damage. */
+  damage_fraction?: number;
 }
 
 /** The inspection state returned by GET /inspection/{id} (`state` field). */
