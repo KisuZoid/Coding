@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openDemo } from "./helpers";
+import { openDemo, COMPOSER_PLACEHOLDER } from "./helpers";
 
 /**
  * Lightweight responsiveness checks on all viewport projects: the intro and
@@ -9,7 +9,7 @@ import { openDemo } from "./helpers";
 test.describe("responsive shell", () => {
   test("landing and demo shell render on every viewport", async ({ page }) => {
     await openDemo(page);
-    await expect(page.getByText("AutoInspect-X assistant")).toBeVisible();
+    await expect(page.getByPlaceholder(COMPOSER_PLACEHOLDER)).toBeVisible();
     await expect(page.getByRole("button", { name: "New inspection" })).toBeVisible();
     await expect(page.getByText("API online")).toBeVisible();
   });

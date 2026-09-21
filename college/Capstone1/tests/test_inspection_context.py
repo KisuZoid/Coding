@@ -1,52 +1,39 @@
-"""Phase F: inspection context + provenance + user-vs-model comparison."""
+"""Phase F: inspection context + provenance (photo-first)."""
 
 from __future__ import annotations
 
 import json
 
-from apps.api.inspection.context import (
-    ComparisonResult,
-    InspectionContext,
-    Provenance,
-    VisionInfo,
-)
+from apps.api.inspection.context import InspectionContext, Provenance, VisionInfo
 
 
-def test_context_default_provenance_is_user() -> None:
-    ctx = InspectionContext(session_id="abc123", incident=None)
-    assert ctx.incident is None
+def test_context_minimal_roundtrip() -> None:
+    ctx = InspectionContext(session_id="abc123")
+    assert ctx.session_id == "abc123"
     assert ctx.updated_at is not None
+    json.dumps(ctx.to_dict())
 
 
 def test_vision_carries_model_provenance() -> None:
     assert VisionInfo(image_asset_id="a1").provenance is Provenance.MODEL
 
 
-def test_compare_agreement() -> None:
-    assert (
-        InspectionContext.compare_user_vs_model({"dent", "scratch"}, {"dent", "scratch"})
-        is ComparisonResult.AGREEMENT
+def test_vision_populated_from_analysis() -> None:
+    vision = VisionInfo(
+        image_asset_id="a1",
+        quality_status="VALID",
+        model_found_classes={"1": "dent"},
+        damage_area_ratio_image=0.05,
     )
-
-
-def test_compare_partial_on_missing_class() -> None:
-    assert (
-        InspectionContext.compare_user_vs_model({"dent", "scratch"}, {"dent"})
-        is ComparisonResult.PARTIAL_AGREEMENT
-    )
-
-
-def test_compare_disagreement_no_shared_classes() -> None:
-    assert (
-        InspectionContext.compare_user_vs_model({"tire flat"}, {"dent"})
-        is ComparisonResult.DISAGREEMENT
-    )
-
-
-def test_compare_not_applicable_when_both_empty() -> None:
-    assert InspectionContext.compare_user_vs_model(set(), set()) is ComparisonResult.NOT_APPLICABLE
+    data = vision.model_dump()
+    assert data["quality_status"] == "VALID"
+    assert data["model_found_classes"] == {"1": "dent"}
+    assert data["damage_area_ratio_image"] == 0.05
 
 
 def test_to_dict_is_serialisable() -> None:
-    ctx = InspectionContext(session_id="s2", incident=None)
+    ctx = InspectionContext(
+        session_id="s2",
+        vision=VisionInfo(image_asset_id="a1", quality_status="TOO_BLURRY"),
+    )
     json.dumps(ctx.to_dict())

@@ -90,7 +90,7 @@ const SCENE_DEFS: Omit<CinematicScene, "startFrame" | "endFrame">[] = [
     text: {
       eyebrow: "04 — The result",
       title: "We show what we found — and what we can't know.",
-      body: "Model findings, estimates, and limits are always labelled. Low confidence says so.",
+      body: "Model findings and limits are always labelled. Low confidence says so.",
     },
   },
 ];

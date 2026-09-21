@@ -1,7 +1,7 @@
 """Dependency container: wires settings, stores, services, and the workflow.
 
 Built once at app startup (``apps.api.main``); routers receive it through
-``request.app.state.container``. The torch model remains lazy so tests that never
+``request.app.state.container``. The torch model stays lazy so tests that never
 hit ``/analyze`` don't pay the CPU load cost.
 """
 
@@ -11,11 +11,9 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from apps.api.agent.assistant import AssistantService, build_assistant
 from apps.api.agent.graph import Services, build_workflow
-from apps.api.agent.groq_service import GroqService, build_groq_service
-from apps.api.cost.cost_estimator import UnavailableCostEstimator
 from apps.api.inspection.consent_service import ConsentService
-from apps.api.repair.repair_estimator import DemoRepairEstimator
 from apps.api.settings import Settings, get_settings
 from apps.api.storage import (
     Database,
@@ -30,11 +28,16 @@ from apps.api.storage import (
 from ml.inference.engine import SegmentationEngine
 
 _REGISTRY = Path("ml/experiments/registry.json")
-_DEFAULT_CHECKPOINT = Path("ml/experiments/cardd_baseline_ce/best_checkpoint.pt")
+_DEFAULT_CHECKPOINT = Path("ml/experiments/cardd_hybrid_ce/best_checkpoint.pt")
 
 
-def _load_checkpoint(directory: Path) -> tuple[str, int]:
-    """Read base + epoch straight from the artefact (never guessed)."""
+def _canon_arch(value: str) -> str:
+    """Canonical arch token: strip case and underscores before comparing."""
+    return "".join(value.lower().split("_"))
+
+
+def _load_checkpoint(directory: Path) -> tuple[str, int, str]:
+    """Read base + model_arch straight from the artefact (never guessed)."""
     ckpt = Path(directory) / "best_checkpoint.pt"
     if not ckpt.is_file():
         raise FileNotFoundError(f"checkpoint not found: {ckpt}")
@@ -42,7 +45,8 @@ def _load_checkpoint(directory: Path) -> tuple[str, int]:
 
     data = torch.load(str(ckpt), map_location="cpu", weights_only=False)
     base = data.get("base", 64)
-    return str(ckpt), int(base)
+    arch = data.get("model_arch") or "cardd_unet"
+    return str(ckpt), int(base), str(arch)
 
 
 def _registry_meta(directory: Path) -> tuple[str | None, float | None]:
@@ -71,9 +75,7 @@ class Container:
     states: SQLiteStateStore
     cleanup: SessionCleanup
     consent: ConsentService
-    repair: DemoRepairEstimator
-    cost: UnavailableCostEstimator
-    groq: GroqService
+    assistant: AssistantService
     workflow: object
     _engine: SegmentationEngine | None = None
 
@@ -83,18 +85,13 @@ class Container:
             directory = checkpoint_path.parent if checkpoint_path.is_file() else None
             git_revision, iou = _registry_meta(directory) if directory else (None, None)
 
-            base = 64
-            if checkpoint_path.is_file():
-                import torch
-
-                data = torch.load(str(checkpoint_path), map_location="cpu", weights_only=False)
-                if isinstance(data.get("base"), int):
-                    base = data["base"]
+            equipped = _load_checkpoint(directory) if directory else None
+            base, arch = (64, "cardd_unet") if equipped is None else (equipped[1], equipped[2])
 
             notes: tuple[str, ...] | None = None
             if iou is not None:
                 notes = (
-                    f"Demo-grade baseline (CarDD, underfit): validation mIoU ~{iou:.4f}.",
+                    f"Current research segmentation model (CarDD): validation mIoU ~{iou:.4f}.",
                     "Per-pixel predictions are preliminary; not verified damage extent.",
                     "Mask-derived severity is 'not currently reliable' for this model.",
                 )
@@ -106,6 +103,11 @@ class Container:
                 base=base,
                 baseline_notes=notes,
             )
+            if _canon_arch(self._engine.metadata.arch) != _canon_arch(arch):
+                raise AssertionError(
+                    "checkpoint advertises arch "
+                    f"{arch!r} but engine built {self._engine.metadata.arch!r}"
+                )
         return self._engine
 
 
@@ -128,18 +130,8 @@ def build_container(settings: Settings | None = None) -> Container:
         settings.training_root,
         settings.training_dataset_version,
     )
-    repair = DemoRepairEstimator()
-    cost = UnavailableCostEstimator()
-    groq = build_groq_service(settings)
-    workflow = build_workflow(
-        Services(
-            groq=groq,
-            repair_estimator=repair,
-            cost_estimator=cost,
-            consent=consent,
-            allow_synthetic=settings.allow_synthetic_estimate,
-        )
-    )
+    assistant = build_assistant(settings)
+    workflow = build_workflow(Services(assistant=assistant))
 
     return Container(
         settings=settings,
@@ -151,8 +143,6 @@ def build_container(settings: Settings | None = None) -> Container:
         states=states,
         cleanup=SessionCleanup(sessions, images),
         consent=consent,
-        repair=repair,
-        cost=cost,
-        groq=groq,
+        assistant=assistant,
         workflow=workflow,
     )

@@ -7,76 +7,103 @@ whenever the decision logic of the system changes — not only when code changes
 
 ## 1. Status
 
-- **Application logic implemented:** none. The repository holds documentation and
-  configuration only.
+- **Application logic implemented:** photo-first inspection API — session
+  creation, upload, analyze (capture-quality gate + segmentation + assistant
+  explanation), optional consent, and chat follow-ups (ADR 0011). See
+  `docs/architecture/overview.md`.
+- **Assistant:** LangChain `ChatGroq` when `GROQ_AUTO_INSPECT_API_KEY` is set
+  (`build_assistant`, model from `settings.groq_model` / `GROQ_MODEL`);
+  otherwise a deterministic offline `StubAssistant`.
 - **n8n workflows:** none. No n8n MCP server is configured and the n8n CLI is not
   installed on this machine. See `init.md` §4 for how to verify this.
 - **Form automations:** none.
 - **Scheduled jobs / webhooks:** none.
 
-Everything below section 2 describes intended logic, not implemented behaviour.
-Do not describe it to anyone as working software.
+Section 2 describes implemented behaviour; section 4 describes future
+automation contracts, not existing workflows. Do not describe those to anyone
+as working software.
 
 ---
 
-## 2. Core inference logic (intended)
+## 2. Core inspection logic (implemented)
 
 ```
-1. Image intake
-   Vehicle photograph(s) are uploaded with vehicle metadata.
+1. Session creation
+   POST /inspection/session — one session id, owned by the user.
 
-2. Segmentation
-   A segmentation model produces per-pixel masks for damage regions and for
-   vehicle parts.
+2. Photo upload
+   POST /inspection/<id>/upload — the photo is validated, EXIF-stripped, and
+   ledgered for the session. A new upload supersedes the previous one.
 
-3. Damage representation
-   From the masks, derive per-damage-region features:
-     - damage type            (model prediction)
-     - damage area ratio      (derived feature: damaged pixels / part pixels)
-     - location on the vehicle(derived feature)
-     - affected part          (model prediction)
-     - segmentation confidence(model output)
-     - geometry descriptors   (derived feature)
+3. Analysis — POST /inspection/<id>/analyze
+   a. Capture-quality gate (blur / dark / glare / contrast / framing). On
+      rejection the endpoint returns HTTP 200 with
+      status="QUALITY_FAILED" and writes the assistant's retake guidance into
+      the conversation; no mask is produced and no model inference runs.
+   b. Segmentation — the engine (CarddHybrid by default; dispatch on the
+      checkpoint's model_arch key, ADR 0010) returns per-pixel logits; argmax
+      over background + 6 CarDD classes.
+   c. Evidence payload — classes present, image-denominator area ratios, mean
+      confidence, low-confidence flag, quality outcome, model metadata; the
+      predicted-mask overlay is stored and served.
+   d. Assistant explanation — the assistant service explains the evidence as
+      the first assistant message in the conversation. The LLM is a
+      **non-blocking stage** of /analyze: if the live LangChain/Groq call fails,
+      the endpoint still returns the full structured result with
+      `assistant_fallback=true` (a clearly offline, deterministic evidence
+      summary), never a 503. The real exception is logged server-side.
 
-4. Metadata encoding
-   make, model, year or age, and region are encoded as structured features.
+4. Optional consent — POST /inspection/<id>/consent
+   GRANTED stores an anonymised training sample with MODEL_SUGGESTED
+   provenance (features from the summary; placeholder mask — never claimed as
+   validated evidence). DECLINED records the decision only.
 
-5. Multimodal fusion
-   Damage representation and metadata features are fused.
+5. Follow-up chat — POST /chat
+   A LangGraph turn (START -> llm_turn -> END) appends the user message and
+   asks the assistant service (LangChain ChatGroq, or the offline
+   StubAssistant) for a reply grounded in the persisted, prompt-safe evidence.
+   ChatResponse has no waiting_for/finished fields: there is no questionnaire
+   gating. Ordinary chat never touches the segmentation engine, so it works
+   with or without a prior analysis; a dead LLM is a typed `503 LLM_UNAVAILABLE`.
 
-6. Heads
-   a. Repair action  → repair / replace / manual inspection
-   b. Repair cost    → lower, median, upper quantile estimates
+### Error contract (typed, safe)
 
-7. Explainable report
-   Present the visual evidence that drove the prediction, alongside the
-   uncertainty range.
+The API never collapses distinct failures into one message. `detail` is always
+`{"code": ..., "message": ...}` where `code` ∈ `SESSION_NOT_FOUND`,
+`SESSION_CLOSED`, `SESSION_EXPIRED`, `NO_UPLOADED_PHOTO`, `BAD_UPLOAD`,
+`MODEL_UNAVAILABLE` (engine could not be built), `INFERENCE_FAILED` (forward
+pass failed), `LLM_UNAVAILABLE`. Responses never contain tracebacks, keys, or
+internals; real exceptions are preserved in the backend logs (uvicorn
+`logger.exception`).
 ```
 
 ### Labelling rules that constrain this logic
 
-- The damage area ratio is a **normalized ratio**, never a physical measurement
-  in cm². An uncontrolled photograph carries no scale reference.
-- Repair-cost values derived from a rule or price table are a **SYNTHETIC
-  LABEL**, never REAL GROUND TRUTH.
+- The damage area ratio is an **image-denominator normalized ratio**, never a
+  physical measurement in cm². An uncontrolled photograph carries no scale
+  reference.
+- The overlay and per-class damage labels are **MODEL PREDICTIONS**, never
+  verified damage extent; `low_confidence` results are presented as preliminary.
+- Repair-cost and repair-action prediction were removed from scope (ADR 0011);
+  no synthetic cost labels exist anywhere in code, data, or UI.
 - Hidden-damage risk is out of scope unless real ground-truth labels exist.
-- The output is an **AI estimate and decision support**, never a final
+- The output is an **AI inspection / decision support**, never a final
   professional workshop quotation. The interface must state this.
 
 ---
 
-## 3. Intended product flow (demo narrative)
+## 3. Demo flow (as users experience it)
 
 ```
-1. Upload vehicle image
-2. Model identifies the damaged region
-3. Show the segmentation overlay
-4. Show damage type and severity features
-5. Add vehicle information
-6. Generate a preliminary repair-cost range
-7. Show uncertainty and confidence
-8. Explain which visual evidence influenced the result
-9. Export the inspection report
+1. Open the demo — the composer accepts a photo attachment (preview, remove, send).
+2. Attach and send a photo of the damage.
+3. The backend runs the capture-quality gate.
+4. On rejection — retake guidance appears in the assistant bubble; no mask.
+5. On success — the predicted-mask overlay, class chips, area ratio and
+   confidence render inline, with honesty annotations when low confidence.
+6. Optionally grant or decline training consent (inline under the chat).
+7. Ask follow-up questions; answers stay grounded in the stored evidence.
+8. The session ends when it expires or is deleted; nothing else is produced.
 ```
 
 ---
@@ -124,7 +151,8 @@ is.
 
 **Inputs:** the repository at the pushed/PR commit. No secrets — the backend
 runs with CPU runtime deps pinned in `requirements-ci.txt`; the Groq key is
-never required on CI (tests use the rule-based Groq service).
+never required on CI (tests blank it in `tests/conftest.py` and use the
+deterministic offline `StubAssistant`).
 
 **Steps:**
 

@@ -48,7 +48,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     try {
       body = await response.json();
       const detailField = (body as { detail?: unknown }).detail;
-      detail = typeof detailField === "string" ? detailField : JSON.stringify(detailField);
+      if (typeof detailField === "string") detail = detailField;
+      else if (typeof detailField === "object" && detailField !== null) {
+        const message = (detailField as { message?: unknown }).message;
+        detail = typeof message === "string" ? message : JSON.stringify(detailField);
+      } else {
+        detail = JSON.stringify(detailField);
+      }
     } catch {
       /* keep the fallback message */
     }

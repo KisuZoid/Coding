@@ -27,15 +27,31 @@ from ml.inference.classes import (
 )
 from ml.inference.errors import ModelLoadError, ModelVersionError
 from ml.inference.preprocess import load_image_rgb, preprocess_image
+from ml.models.cardd_hybrid import CarddHybrid
 from ml.models.cardd_unet import CarddUNet
 
-# Honest limits for the current research baseline (carried from the model card
-# ml/experiments/cardd_baseline_ce). Params allow a better card to replace it.
+# Honest limits for the current research model (carried for deployments that
+# omit registry metadata). Validation mIoU ~0.050 for the CarddHybrid run
+# `cardd_hybrid_ce`; several minority classes are not reliably separated.
 _BASELINE_LIMITATIONS = (
-    "Demo-grade baseline (CarDD, underfit): validation mIoU ~0.0475.",
+    "Current research segmentation model (CarDD, hybrid, underfit): validation mIoU ~0.050.",
     "Per-pixel predictions are preliminary; not verified damage extent.",
     "Mask-derived severity is 'not currently reliable' for this model.",
 )
+
+
+def _build_model(arch: str, *, base: int, num_classes: int) -> CarddUNet | CarddHybrid:
+    """Instantiate the checkpoint's architecture from its ``model_arch`` key.
+
+    Legacy baselines predate the key (or store ``cardd_unet``) and map to
+    CarddUNet; hybrid runs store ``cardd_hybrid``. Unknown keys fail loudly so
+    an artefact is never silently run with the wrong architecture.
+    """
+    if arch == "CarddHybrid" or arch == "cardd_hybrid":
+        return CarddHybrid(base=base, num_classes=num_classes)
+    if not arch or arch in {"CarddUNet", "cardd_unet"}:
+        return CarddUNet(base=base, num_classes=num_classes)
+    raise ModelVersionError(f"unknown model_arch in checkpoint: {arch!r}")
 
 
 def _resolve_device(device: str | torch.device | None) -> torch.device:
@@ -55,6 +71,7 @@ class ModelMetadata:
     checkpoint_path: str
     epoch: int | None = None
     git_revision: str | None = None
+    arch: str = "cardd_unet"
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +82,7 @@ class ModelMetadata:
             "checkpoint_path": self.checkpoint_path,
             "epoch": self.epoch,
             "git_revision": self.git_revision,
+            "arch": self.arch,
         }
 
 
@@ -119,11 +137,11 @@ class SegmentationResult:
 
 
 class SegmentationEngine:
-    """Typed, stateless-when-idle wrapper around the CarddUNet checkpoint."""
+    """Typed, stateless-when-idle wrapper around a segmentation checkpoint."""
 
     def __init__(
         self,
-        model: CarddUNet,
+        model: torch.nn.Module,
         metadata: ModelMetadata,
         device: str | torch.device | None = None,
         *,
@@ -173,7 +191,9 @@ class SegmentationEngine:
             raise ModelVersionError(
                 f"checkpoint built with base={ckpt_base}, engine configured for base={base}"
             )
-        model = CarddUNet(base=base, num_classes=num_classes)
+        arch = checkpoint.get("model_arch")
+        arch_name = arch if isinstance(arch, str) else ""
+        model = _build_model(arch_name, base=base, num_classes=num_classes)
         try:
             model.load_state_dict(cast(dict[str, Any], checkpoint["model_state"]))
         except RuntimeError as exc:
@@ -187,6 +207,7 @@ class SegmentationEngine:
             checkpoint_path=str(path.resolve()),
             epoch=epoch if isinstance(epoch, int) else None,
             git_revision=git_revision,
+            arch=model.__class__.__name__,
         )
         return cls(model, metadata, device=device, baseline_notes=baseline_notes)
 

@@ -1,7 +1,7 @@
 """FastAPI application factory and uvicorn entry-point (Phases B, K wiring).
 
 Run the API in the ``ai`` conda environment (CUDA-capable torch, fastapi,
-langgraph, groq all present):
+langgraph, langchain-groq all present):
 
     source ~/miniconda3/etc/profile.d/conda.sh && conda activate ai
     uvicorn apps.api.main:app --reload

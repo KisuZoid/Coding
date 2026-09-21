@@ -9,7 +9,9 @@ Repair-cost ground truth is difficult to obtain. Public vehicle damage datasets
 carry segmentation masks but rarely real repair invoices. The practical
 substitute is a rule or price table that maps damaged part and severity to a
 cost. That substitute is useful for building the system, and dangerous if it is
-later described as reality.
+later described as reality. ADR 0011 later removed cost/repair prediction from
+the product scope entirely; this policy remains the general rule for whatever
+label families do exist.
 
 ## Decision
 
@@ -26,9 +28,11 @@ Every label in this project carries an explicit category:
 
 Binding rules:
 
-1. A rule-generated cost table is a SYNTHETIC LABEL. Evaluating against it
-   measures agreement with the rule, not accuracy against real repair cost, and
-   every reported result must say so.
+1. A rule-generated cost table would be a SYNTHETIC LABEL. Evaluating against
+   it measures agreement with the rule, not accuracy against real repair cost,
+   and every reported result must say so. Repair-cost prediction was removed
+   from scope (ADR 0011), so no such table is generated in this repository and
+   no result may claim real-cost accuracy.
 2. Synthetic hidden-damage labels are not hidden-damage evidence. Hidden-damage
    risk stays out of scope until real labels exist.
 3. Physical damage area in cm² is not claimed from an uncontrolled photograph.
@@ -38,16 +42,18 @@ Binding rules:
 
 ## Rationale
 
-The single largest credibility risk in this project is a synthetic cost label
-quietly becoming "the ground truth" between the code and the final report. Once
-the categories are separate in the schema, that substitution cannot happen by
-accident.
+The single largest credibility risk in this project would be a synthetic cost
+label quietly becoming "the ground truth" between the code and the final report.
+Once the categories are separate in the schema, that substitution cannot happen
+by accident. ADR 0011 removed cost/repair from scope, which removes the risk in
+the product; the category policy still governs any label family that exists.
 
 ## Consequences
 
-- Cost-estimation results are framed as agreement with a documented cost model
-  until real cost data is obtained.
-- The interface separates an AI estimate from a professional workshop quotation
-  as a correctness requirement, not a disclaimer.
-- If real repair-cost data becomes available, the labelling category changes and
-  the claims can strengthen accordingly — recorded as a new ADR.
+- Repair-cost estimation is out of scope (ADR 0011): no cost labels are
+  produced, and no result may be framed as agreement with a documented cost
+  model or as real-cost accuracy.
+- The interface separates the model's prediction (the segmentation mask) from
+  verified damage extent as a correctness requirement, not a disclaimer.
+- If real repair-cost data ever becomes available, the labelling category would
+  change and the claims could strengthen accordingly — only via a new ADR.

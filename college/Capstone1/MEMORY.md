@@ -869,3 +869,160 @@ paths, Playwright's `channel: "chrome"` and `BACKEND_CMD`).
    baseline stays demonstration-grade (low_confidence usually true).
 
 ---
+
+## 2026-09-21 — Photo-first documentation rewrite (four deliverables)
+
+**Change:**
+Completely rewrote the documentation so the written record matches the
+implemented photo-first scope (ADR 0010/0011), replacing cost/repair/
+multimodal framing with the evidence-labelling honesty contract:
+
+- `AutoInspect-X_Research_Report_Corrected.md` — new photo-first CSS, RQs
+  redefined (RQ1 segmentation quality; RQ2 confidence honesty; RQ3
+  representation honesty), a fresh §5 literature review (~2,740 words,
+  references [1]–[22]), corrected CarDD citation (DOI 10.1109/
+  TITS.2023.3258480), corrected VehiDE figures (13,945 / 32k+ / 8), UNVERIFIED
+  flags for "CDD (2025)" and "Insurance-Damage-v2".
+- `AUTOinspectX_PROJECT_STATE.md` (new) — 32-section canonical project state;
+  CarddHybrid PLANNED/untrained; cost/repair REMOVED (ADR 0011); factuality
+  labels applied throughout.
+- `docs/research/problem-definition.md` — photo-first problem statement with
+  the new RQ, honest input/output/ground-truth table, comparison arms A1–A4.
+- `docs/research/implementation-alignment.md` — repo-vs-research reconciliation
+  (legend IMPLEMENTED/PARTIAL/NOT STARTED/PLANNED/REMOVED), claims the repo
+  cannot yet support, citation-integrity + material-corrections tables.
+
+**Reasoning:**
+The codebase was re-scoped to photo-first (ADR 0011) and gained the
+CNN+transformer hybrid (ADR 0010), but the research-facing documents still
+described the superseded cost/repair data-blocked design. AGENTS.md §2/§3 make
+the research document the source of truth and require ground-truth categories to
+stay distinct, so the docs had to be brought into line before any scientific
+claim is made.
+
+**Current logic / state after the change:**
+
+- The four deliverables now agree: system answers "where is the damage, how
+  sure can we be", never "what will it cost / which repair action".
+- CarddHybrid (`ml/models/cardd_hybrid.py`, ~3.2 M params) is a researched
+  hypothesis (ADR 0010) with **no training evidence** — `cardd_hybrid_ce` is
+  PLANNED and the honest-training rule still binds any future claim.
+- RQ2 confidence-honesty operational metric is **not yet locked** — documented
+  as a blocker in all four files; no honesty number may be reported without it.
+- New references added: [21] Lee et al. 2024 (three-quarter-view dataset),
+  [22] Sellam et al. 2025 (C-DiffDet+).
+- Working tree still contains the uncommitted photo-first code/ADR changes
+  (ADR 0010/0011, deleted cost/repair/groq modules, hybrid model) plus these
+  four doc rewrites.
+
+**Open questions:**
+
+1. Exact operational definition of the RQ2 metric (separation of confidence over
+   agreement vs disagreement with CarDD val) — must be written into the
+   experiment config before `research_summary.md` reports anything.
+2. Whether to commit the uncommitted working tree now (photo-first session) or
+   continue with hybrid training first.
+3. Still carried forward: video narrative copy needs visual confirmation;
+   baseline stays demonstration-grade.
+
+---
+
+## 2026-09-21 — CarddHybrid trained + evaluated; photo-first verification closed out
+
+**Change:**
+The hybrid hypothesis moved from PLANNED to MEASURED. `cardd_hybrid_ce` was
+trained (5 epochs, seed 0, base 32, CE/argmax, full CarDD splits; best val
+mIoU **0.0504** at epoch 3) and evaluated on the full val/test splits via an
+arch-dispatch extension to `ml/evaluation/evaluate_run.py`. Demo default and
+engine notes now reference the hybrid checkpoint; the CE U-Net run became
+SUPERSEDED in the registry.
+
+**Reasoning:**
+ADR 0010's honest-training rule required the hybrid to be trained and its
+inference verified before any claim. With the checkpoint live, the real-engine
+pytest journey and the Playwright inspection journeys switched from skip →
+pass, so the E2E browser contract could finally be exercised against real
+model output, while every claim stayed capped at the MEASURED numbers.
+
+**Current logic / state after the change:**
+
+- Measured: hybrid val mIoU 0.0504 / test mIoU 0.0586; mDice 0.0866/0.0964;
+  pxAcc 0.7601/0.7659; small-damage slice IoU ≈0 (0.0002/0.0003). Per-class
+  only background (0.771) + glass shatter (0.214) contribute; dent/crack/
+  tire-flat at IoU 0. Aggregate is a weak positive over `cardd_baseline_ce`
+  (0.0475), the model is still underfit — honesty labels must keep saying so.
+- `apps/api/container.py` gained `_canon_arch` (strip case + underscores):
+  the engine reports the class name (`CarddHybrid`) while the checkpoint
+  advertises `model_arch` (`cardd_hybrid`); the old case-sensitive compare
+  would only have tripped once a real checkpoint existed.
+- Playwright webServer default now blanks `GROQ_AUTO_INSPECT_API_KEY` so
+  browser tests run hermetic against the offline `StubAssistant`; repo `.env`
+  still holds a real key for live runs. Full suite: 20 passed, 4 intended
+  skip (journey once on desktop).
+- All doc claims were re-based to "trained + measured" (research report
+  §10–§13/§17, project state §8–§10/§24–25/§32, problem definition,
+  implementation alignment, README, RUNBOOK, ADR 0010).
+
+**Open questions:**
+
+1. A2 (U-Net extended epochs) and A4 not run — needed to separate underfit vs
+   architecture before a stronger RQ1 claim.
+2. RQ2 confidence-honesty metric still not locked in the experiment config —
+   still the blocker for any honesty-number claim / `research_summary.md`.
+3. Whole photo-first working tree (ADO 0010/0011, deleted cost/repair/groq
+   modules, new frontend/tests) remains uncommitted — commit when the user asks.
+4. Carried forward: narrative copy visual confirmation; CI run locally
+   UNVERIFIED; checkpoints/datasets stay git-ignored.
+
+---
+
+---
+## 2026-09-21 (follow-up) — Live backend fixed: real Groq + hybrid + error typing
+
+**Symptom:** `/chat` and `/analyze` → `503 assistant unavailable` on the running
+app. Frontend was not the problem.
+
+**Root cause (verified live):** the LangChain ChatGroq call failed with
+`groq.NotFoundError 404 model_not_found` for `llama-3.3-70b-versatile` — this
+Groq key's account exposes a different model catalogue. Confirmed working chat
+models on the key via LangChain: `openai/gpt-oss-120b`, `openai/gpt-oss-20b`,
+`qwen/qwen3.8-27b`. Code default + `.env` + `.env.example` now use
+`openai/gpt-oss-20b`.
+
+**Key decisions (record here so they are not re-litigated):**
+- `.env` is the ONLY place a real secret lives; `.env.example` keeps an empty
+  placeholder. This session re-verified `.env` is git-ignored (`git check-ignore`
+  confirms) and `.env.example` contains no secret.
+- `/analyze` must never 503 because the LLM is down: segmentation → structured
+  result → overlay always returns; the LLM is a non-blocking last stage with a
+  clearly flagged offline fallback (`assistant_fallback: true`). Uvicorn logs
+  the real exception.
+- All failures are now typed: `detail = {code, message}` with codes
+  `SESSION_NOT_FOUND` / `SESSION_CLOSED` / `SESSION_EXPIRED` /
+  `NO_UPLOADED_PHOTO` / `BAD_UPLOAD` / `MODEL_UNAVAILABLE` / `INFERENCE_FAILED`
+  / `LLM_UNAVAILABLE` (`apps/api/errors.py`). Responses never leak internals.
+- Ordinary `/chat` must work without any segmentation (it does — evidence is
+  optional in the graph). Chat is LLM-bound: a dead LLM = typed `503
+  LLM_UNAVAILABLE`.
+- Playwright is hermetic by default again, but now for the RIGHT reason: the
+  backend webServer never silently reuses a running server
+  (`reuseExistingServer:false`); reuse is opt-in (`REUSE_BACKEND=1`). The
+  earlier "hermetic" config silently reused the supervisor's live backend, which
+  is what produced the wording-polluted bad-photo failure.
+- Test hygiene: `test_defaults` uses `Settings(_env_file=None)` so a developer's
+  local `.env` can't leak into unit-default assertions.
+
+**Verified numbers (this session):** hybrid checkpoint valid (base 32,
+`model_arch=cardd_hybrid`, `out_conv (7,32,1,1)`); direct LangChain Groq `OK`;
+real CarDD image → scratch + glass shatter, mean conf 0.739, overlay OK. Live
+running server (real key + real checkpoint): chat 200 with real Groq, analyze
+200 with real LangChain explanation (fallback false), follow-up 200 with stored
+context, blurry → `QUALITY_FAILED` + guidance, replacement → OK. Gates: ruff ✓
+format ✓ mypy strict ✓ (56 files), pytest **130 passed**, frontend lint/tsc/build
+✓, Playwright **20 passed / 4 intended skip**.
+
+**Open (unchanged):** A2/A4 separation runs + RQ2 metric lock before
+`research_summary.md`; CI job still UNVERIFIED locally; whole photo-first working
+tree (now incl. Task 21 changes) still uncommitted — the supervisor may want a
+commit next. Recommend a manual restart of the `--reload` dev server so
+`.env`-only values (`GROQ_MODEL`, `MODEL_PATH`, `MODEL_VERSION`) are picked up.

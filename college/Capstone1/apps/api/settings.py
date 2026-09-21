@@ -38,14 +38,12 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
 
     # Backed by GROQ_AUTO_INSPECT_API_KEY (see .env.example). Consumed
-    # server-side only; never exposed to the browser or logs.
+    # server-side only; never exposed to the browser or logs. When absent the
+    # container wires an offline stub assistant (no network).
     groq_api_key: str = Field(default="", validation_alias="GROQ_AUTO_INSPECT_API_KEY")
+    groq_model: str = Field(default="openai/gpt-oss-20b", validation_alias="GROQ_MODEL")
     model_path: Path | None = None
     model_version: str | None = None
-
-    # When True, a synthetic cost estimate may be surfaced — always inside an
-    # explicitly labelled "DEMO / SYNTHETIC ESTIMATE — NOT A REAL QUOTE" state.
-    allow_synthetic_estimate: bool = False
 
     # Local storage roots (phases C/K). Supabase/S3/Postgres replace these
     # later behind the storage interfaces without touching domain logic.

@@ -1,4 +1,4 @@
-"""API request/response contracts (Phases B, K, L wiring)."""
+"""API request/response contracts (Phases B, K, L wiring; photo-first)."""
 
 from __future__ import annotations
 
@@ -31,14 +31,31 @@ class UploadResponse(BaseModel):
 
 
 class AnalyzeResponse(BaseModel):
+    """Result of one photo analysis (quality gate + segmentation + assistant).
+
+    ``status`` distinguishes a finished segmentation run (``OK``) from a
+    capture-quality rejection (``QUALITY_FAILED``). On quality failure the
+    endpoint returns no segmentation output and the assistant gives the user
+    retake guidance. On success, ``inspection`` carries the structured evidence
+    and ``assistant_message`` the first explanation in the conversation. No
+    cost or repair fields exist by design.
+    """
+
     session_id: str
-    asset_id: str
-    low_confidence: bool
-    damage_fraction: float
-    mean_confidence: float
-    classes_present: dict[str, str]
-    analysis: dict[str, Any]
-    overlay_png_base64: str
+    status: Literal["OK", "QUALITY_FAILED"]
+    assistant_message: str
+    # True when the live LangChain assistant was unavailable and a clearly
+    # offline, deterministic evidence summary/retake guidance was used instead.
+    assistant_fallback: bool = False
+    asset_id: str | None = None
+    quality_status: str | None = None
+    quality_reasons: list[str] = Field(default_factory=list)
+    inspection: dict[str, Any] | None = None
+    classes_present: dict[str, str] = Field(default_factory=dict)
+    low_confidence: bool = False
+    damage_fraction: float = 0.0
+    mean_confidence: float = 0.0
+    overlay_png_base64: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -49,8 +66,6 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     session_id: str
     reply: str
-    waiting_for: str | None = None
-    finished: bool = False
     request_id: str
 
 

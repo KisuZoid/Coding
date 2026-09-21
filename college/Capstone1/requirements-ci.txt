@@ -13,6 +13,7 @@ langgraph==1.1.9
 groq==0.37.1
 langchain-core==1.5.1
 langchain==1.2.15
+langchain-groq==1.1.2
 opencv-python==4.13.0.92
 numpy==2.4.3
 pillow==12.1.1
