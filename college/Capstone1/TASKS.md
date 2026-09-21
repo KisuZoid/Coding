@@ -1521,3 +1521,267 @@ write the answer down as `RUNBOOK.md`.
    visual confirmation; baseline stays demonstration-grade.
 
 ---
+
+## Task 19 — Photo-first doc rewrite: research report, project state, problem definition, implementation alignment
+
+**Date:** 2026-09-21
+**Status:** Completed
+
+**Prompt (summary):**
+Bring the four deliverable documents into line with the implemented photo-first
+scope: rewrite `AutoInspect-X_Research_Report_Corrected.md`,
+`AUTOinspectX_PROJECT_STATE.md` (new file), `docs/research/problem-definition.md`,
+and `docs/research/implementation-alignment.md` so cost/repair/multimodal
+content is described only as removed (ADR 0011), CarddHybrid is described as
+PLANNED/untrained (ADR 0010), and all claims honour the ground-truth categories
+(ADR 0004) — plus a fresh, verified literature review section.
+
+**Steps completed:**
+
+1. Re-read all session-start docs, the four deliverable files, ADRs 0010/0011,
+   `research-scope.md`, `segmentation-experiment-config.md`, `git status/log`.
+2. Verified/updated citations during the literature review: CarDD DOI corrected
+   (IEEE T-ITS vol. 24 no. 7, pp. 7202–7214, 2023, DOI 10.1109/TITS.2023.3258480,
+   arXiv:2211.00945); VehiDE figures corrected (13,945 img / 32k+ inst / 8
+   classes); added references [21] Lee et al. (three-quarter-view Car Damage,
+   Heliyon 2024, e34016) and [22] Sellam et al. (C-DiffDet+, arXiv:2509.00578);
+   "CDD (2025)" and "Insurance-Damage-v2" retained but flagged UNVERIFIED.
+3. **Rewrote** `AutoInspect-X_Research_Report_Corrected.md` — photo-first
+   throughout; new §5 Literature Review (~2,740 words, six sub-sections +
+   matrix + §5.9 synthesis, references [1]–[22]); RQ1/RQ2/RQ3 redefined
+   (segmentation quality / confidence honesty / representation honesty);
+   cost/fusion/quantile-loss RQs rescinded; §16.1 RQ2 design intent;
+   corrected CarDD citation with material-correction note.
+4. **Wrote** `AUTOINspectX_PROJECT_STATE.md` (new) — 32 sections, photo-first
+   truth, CarddHybrid PLANNED/untrained, cost/repair rows REMOVED, factuality
+   labels, blockers + tiered next steps.
+5. **Rewrote** `docs/research/problem-definition.md` — photo-first problem,
+   new RQ, inputs/outputs with ground-truth category, out-of-scope list,
+   comparison arms A1–A4, open questions (RQ2 metric must be locked).
+6. **Rewrote** `docs/research/implementation-alignment.md` — 11 sections
+   reconciling repo state vs the rewritten research report; legend
+   IMPLEMENTED/PARTIAL/NOT STARTED/PLANNED/REMOVED; claims the repo cannot yet
+   support; citation-integrity notes; material-corrections table.
+
+**Files created:**
+
+- `AUTOinspectX_PROJECT_STATE.md`
+
+**Files changed:**
+
+- `AutoInspect-X_Research_Report_Corrected.md` (full rewrite; literature
+  review expanded)
+- `docs/research/problem-definition.md` (full rewrite)
+- `docs/research/implementation-alignment.md` (full rewrite)
+
+**Not done, and why:**
+
+- No code, tests, ADRs, or experiment runs — writing/editing only by design.
+- No training of `cardd_hybrid_ce` — remains PLANNED (ADR 0010 requires
+  training + inference verification before any claim).
+- RQ2 confidence-honesty operational metric still not locked — flagged as a
+  blocker in all four docs.
+
+**Verification:**
+
+- Section 5 word count measured ≈ 2,740 (target 2,500–4,000).
+- Cross-references (§ numbers, reference tags [1]–[22]) checked across all
+  four deliverable files.
+
+**Follow-up:**
+
+1. Train `cardd_hybrid_ce` and re-measure against `cardd_baseline_ce` under the
+   locked schedule; lock the RQ2 metric in the experiment config first.
+2. Uncommitted ADR 0010/0011 + code from the photo-first session remain in the
+   working tree — commit when the user asks.
+
+---
+
+## Task 20 — Photo-first verification: CarddHybrid trained + evaluated, real-engine E2E/E2E browser green
+
+**Date:** 2026-09-21
+**Status:** Completed
+
+**Prompt (summary):**
+Close out the photo-first scope supervision session: run the hybrid training,
+evaluate it honestly, wire the real engine end-to-end against the new
+checkpoint, repoint the demo default, and re-verify every quality gate.
+
+**Steps completed:**
+
+1. Trained `cardd_hybrid_ce` (5 epochs, seed 0, base 32, CE/argmax, full CarDD
+   splits): train CE 0.947→0.765; best val mIoU **0.0504** at epoch 3
+   (`best_checkpoint.pt`, 12.9 MB; git rev `5eb8645`).
+2. Ran the full-split evaluation harness — extended `ml/evaluation/evaluate_run.py`
+   to dispatch on the checkpoint `model_arch` key (previously hard-coded
+   CarddUNet). val/test: mIoU 0.0504/0.0586, mDice 0.0866/0.0964, mPrec
+   0.2146/0.2148, mRec 0.0587/0.0674, pxAcc 0.7601/0.7659; small-damage slice
+   ≈0 (0.0002/0.0003). Per-class: only background + glass shatter contribute;
+   dent/crack/tire-flat at IoU 0 — underfit, honest picture.
+3. Fixed a latent arch-normalization bug in `apps/api/container.py`: the engine
+   reports the class name (`CarddHybrid`) while the checkpoint advertises the
+   arch key (`cardd_hybrid`); the compare was substring-sensitive and only
+   triggered once a real checkpoint existed — added `_canon_arch` (strip case +
+   underscores). Also updated `engine.py` default honesty notes to the hybrid
+   numbers.
+4. Updated `ml/experiments/registry.json`: `cardd_hybrid_ce` → ACTIVE demo
+   checkpoint; `cardd_baseline_ce` → SUPERSEDED; added full-eval metrics.
+5. Re-ran the real-engine journey (`test_full_journey_happy_path_with_real_engine`)
+   — passes (no longer skipped). Re-ran the frontend gates (lint, `tsc --noEmit`
+   after fixing a `getByText({ignoreCase})` type error → regex in
+   `inspection-journey.spec.ts`) and the build.
+6. Made the Playwright backend hermetic: the webServer default now blanks
+   `GROQ_AUTO_INSPECT_API_KEY` so the suite runs against the offline
+   `StubAssistant` instead of failing on an unreachable live ChatGroq
+   (repo `.env` carries a real key). Full Playwright: **20 passed, 4 intended
+   skip** (engine journey runs once on desktop).
+7. Doc sweep after training: updated `AutoInspect-X_Research_Report_Corrected.md`
+   (H1/§11/§12/§13/§17 + §5.4 phrasing: weak positive, underfit, slice ≈0),
+   `AUTOINspectX_PROJECT_STATE.md` (model status, §9 registry table, §10 hybrid
+   results table, §24–25, §32), `docs/research/problem-definition.md`,
+   `docs/research/implementation-alignment.md`, `README.md`, `RUNBOOK.md`,
+   `docs/decisions/0010-cardd-hybrid-model.md` — all to the now-true "trained +
+   measured, claims capped at measured numbers" state.
+
+**Files created:**
+
+- `ml/experiments/cardd_hybrid_ce/` artefacts (checkpoint + `run_record.json` +
+  `evaluation_summary.json` + montages; git-ignored)
+- `ml/experiments/cardd_hybrid_ce_eval.log`
+
+**Files changed:**
+
+- `ml/evaluation/evaluate_run.py` (arch dispatch on `model_arch`) — 55 files
+  pass mypy after change
+- `apps/api/container.py` (`_canon_arch`; container currently at 124 passing
+  tests)
+- `ml/inference/engine.py` (default honesty notes → hybrid)
+- `ml/experiments/registry.json` (hybrid ACTIVE, baseline SUPERSEDED)
+- `apps/web/playwright.config.ts` (hermetic backend: blank Groq key by default)
+- `apps/web/e2e/inspection-journey.spec.ts` (`getByText(/retake/i)`)
+- Documents listed in step 7 (research report, project state, problem
+  definition, implementation alignment, README, RUNBOOK, ADR 0010)
+
+**Not done, and why:**
+
+- A2 (U-Net, extended epochs) not run — needs the same harness; separates
+  underfit vs architecture before a stronger claim.
+- A4 extension + RQ2 confidence-honesty metric not locked — all required
+  before `research_summary.md` can claim anything beyond the measured numbers.
+- CI push not run locally (workflow exists; last-green UNVERIFIED).
+- Checkpoints/datasets stay git-ignored (reproducibility via recorded revs).
+
+**Verification:**
+
+- ruff clean; mypy (strict) clean (55 files); pytest **124 passed** (real-engine
+  e2e now runs); frontend lint + tsc + build clean; Playwright **20 passed,
+  4 skipped**.
+
+**Follow-up:**
+
+1. Commit the whole photo-first working tree when the user asks
+   (docs-grep clean of cost/estimate/video-fallback beyond deliberate notes).
+2. Next research step: A2 baseline extension, RQ2 metric lock, then
+   `research_summary.md`; keep demo claims capped at measured numbers.
+
+---
+## Task 21 — Live backend fix: real Groq (LangChain) + hybrid model + photo analysis
+
+**Date:** 2026-09-21 (evening follow-up)
+**Status:** Completed
+
+**Prompt (summary):**
+`/chat` and `/analyze` returned `503 assistant unavailable` on the running app.
+Find the real root cause end-to-end (settings → LangChain → Groq; engine →
+checkpoint → inference), prove each real dependency works, then make the LLM a
+non-blocking stage of `/analyze`, type every failure, and re-verify all gates.
+
+**Root cause:**
+- `GROQ_AUTO_INSPECT_API_KEY` was loading correctly (`.env`, length 56).
+- The LangChain `ChatGroq` call failed with `groq.NotFoundError 404
+  model_not_found` — this account's Groq key does **not** expose the old
+  default `llama-3.3-70b-versatile`. Every live LLM call collapsed into
+  "assistant unavailable"; because `/analyze` treated the LLM as mandatory,
+  the segmentation result was actually being produced but was never returned.
+- Available chat models verified live: `openai/gpt-oss-120b`,
+  `openai/gpt-oss-20b`, `qwen/qwen3.8-27b` (all PASS via LangChain). Code
+  default and `.env`/`.env.example` now use `openai/gpt-oss-20b`.
+
+**Steps completed:**
+1. Verified settings/.env loading, installed versions (langchain 1.2.15,
+   langchain-groq 1.1.2), and the hybrid checkpoint (valid dict; base 32;
+   `model_arch=cardd_hybrid`; `out_conv` shape `(7, 32, 1, 1)`).
+2. Real Groq diagnostic + real-image hybrid inference smoke test:
+   **LangChain→Groq PASS ('OK')**; **CarddHybrid LOAD PASS** (no missing/
+   unexpected keys); real CarDD test image → `PREDICTED_CLASSES [0,2,4]`
+   (scratch + glass shatter), mean conf 0.739, overlay renders,
+   `INFERENCE_SUCCESS: PASS`, 7 channels.
+3. Switched the working model default to `openai/gpt-oss-20b` in
+   `apps/api/settings.py`, `apps/api/agent/assistant.py` (`_GROQ_MODEL`),
+   `.env.example`, and `.env`; also set `MODEL_PATH`/`MODEL_VERSION` in `.env`
+   (runtime config, both git-ignored files; `.env.example` keeps only an empty
+   placeholder / documented default — secret never committed).
+4. **Error typing** (`apps/api/errors.py`): `detail` is now
+   `{"code","message"}` with codes `SESSION_NOT_FOUND`, `SESSION_CLOSED`,
+   `SESSION_EXPIRED`, `NO_UPLOADED_PHOTO`, `BAD_UPLOAD`, `MODEL_UNAVAILABLE`,
+   `INFERENCE_FAILED`, `LLM_UNAVAILABLE`. Real exceptions/tracebacks stay in
+   uvicorn logs (`logger.exception`); responses never leak internals.
+5. **`/analyze` is Groq-independent**: segmentation + structured result +
+   overlay always returned; the LLM is a non-blocking last stage. If the LLM
+   fails, the endpoint returns the full result with `assistant_fallback=true`
+   and a clearly offline deterministic summary (never 503). Quality-reject path
+   likewise falls back to offline retake guidance.
+6. **`/chat`** is LLM-bound only (ordinary chat never touches segmentation); a
+   dead LLM now surfaces a typed `503 LLM_UNAVAILABLE`.
+7. Frontend `lib/api.ts` parses the `{code,message}` detail for clean UI errors.
+8. Playwright backend is **hermetic by default** (`reuseExistingServer:false`
+   + key-blanked command) so a live server can never silently be tested; opt-in
+   escapes `REUSE_BACKEND=1`, `BACKEND_URL`, `BACKEND_CMD`. The bad-photo
+   journey assertion became wording-robust (guidance regex covers stub and
+   live wording).
+9. Added `tests/test_api_error_categories.py` (6 tests): analyze-with-LLM-down
+   returns structured result + `assistant_fallback`; quality-reject keeps
+   offline guidance; `LLM_UNAVAILABLE`/`MODEL_UNAVAILABLE`/`INFERENCE_FAILED`/
+   `SESSION_NOT_FOUND`/`NO_UPLOADED_PHOTO` codes; no secrets in responses.
+   Updated the settings default test to use `Settings(_env_file=None)` so the
+   local `.env` can't leak into unit-default assertions.
+
+**Files created:**
+- `apps/api/errors.py`
+- `tests/test_api_error_categories.py`
+
+**Files changed:**
+- `apps/api/settings.py` (model default → `openai/gpt-oss-20b`)
+- `apps/api/agent/assistant.py` (`_GROQ_MODEL`, noqa placement)
+- `apps/api/routers/chat.py`, `apps/api/routers/inspection.py` (typed errors,
+  LLM fallback, engine-vs-inference split)
+- `apps/api/shared/schemas.py` (`assistant_fallback` on `AnalyzeResponse`)
+- `apps/web/lib/api.ts`, `apps/web/playwright.config.ts`,
+  `apps/web/e2e/inspection-journey.spec.ts`
+- `.env.example`, `.env` (groq key + `GROQ_MODEL`/`MODEL_PATH`/`MODEL_VERSION`)
+- `tests/test_api_settings.py`, `tests/test_agent_assistant.py` (test typing)
+- `README.md`, `RUNBOOK.md`, `LOGIC.md` (model default, error contract,
+  fallback, Playwright hermeticity, troubleshooting)
+
+**Verification (real runtime, running server, real key, real checkpoint):**
+- `GET /health` 200 · `POST /inspection/session` 200 · `POST /chat
+  "hello"` **200 real Groq reply** · upload `200` · `/analyze` **200
+  CarddHybrid + real LangChain explanation** (scratch + glass shatter, mean
+  0.734, overlay served, `assistant_fallback:false`) · follow-up chat **200
+  using stored context** · blurry upload → `QUALITY_FAILED TOO_BLURRY` + retake
+  guidance in chat · replacement upload + analyze → `OK`.
+- `model_version: cardd_hybrid_ce-20260921-162128` propagates via `.env`.
+- ruff clean · `ruff format --check` clean · mypy (strict) clean (56 files) ·
+  pytest **130 passed** · frontend lint/tsc/build clean · Playwright
+  **20 passed, 4 intended skip** (one transient flaky resolved on retry and
+  stable on a focused rerun).
+
+**Not done / notes:**
+- The dev backend the supervisor runs (`uvicorn --reload --port 8000`) reloads
+  the fixed source, but `.env`-only changes need a manual restart; advise
+  restarting it so `GROQ_MODEL`/`MODEL_PATH` take effect (the running process
+  already reloaded the code defaults on the settings.py change).
+- A2/A4 + RQ2 still open from Task 20 (unchanged).
+- Working tree still uncommitted (supervisor may want a commit next).
+
+---

@@ -1,8 +1,9 @@
 # Architecture Overview
 
-> Status: **implemented.** Phases A–R of the product build are complete
-> (2026-09-08). This document describes the running system. The original
-> target-architecture document was superseded by this one.
+> Status: **implemented.** Phases A–R of the product build completed in
+> 2026-09-08; the photo-first scope change (ADR 0011) and `CarddHybrid` model
+> (ADR 0010) superseded the Phase R product contract on 2026-09-21. This
+> document describes the running system as of that date.
 
 ## 1. Shape
 
@@ -14,8 +15,8 @@ boundaries between components, and loses reproducibility. See
 ```
 AutoInspect-X/
 ├── apps/
-│   ├── web/            Next.js (App Router) frontend — cinematic intro + demo journey
-│   └── api/            FastAPI backend — routers, agent, storage, vision, cost, repair
+│   ├── web/            Next.js (App Router) frontend — cinematic intro + chat demo
+│   └── api/            FastAPI backend — routers, agent (assistant), inspection, vision, storage
 ├── ml/
 │   ├── datasets/       Dataset adapters and audit (CarDD COCO)
 │   ├── training/       Training workflows (never imported by the API — ADR 0003)
@@ -24,8 +25,8 @@ AutoInspect-X/
 │   ├── analysis/       Error analysis / visualisation helpers (research side)
 │   └── experiments/    Registry + per-run records (checkpoints git-ignored)
 ├── docs/
-│   ├── decisions/      ADRs 0001–0009
-│   └── architecture/   This overview, gap report (superseded), cost readiness
+│   ├── decisions/      ADRs 0001–0011
+│   └── architecture/   This overview, gap report (superseded)
 ├── public/             4 demo clips served to the frontend (video.mapped timeline)
 ├── tests/              Pytest suite (API-level + backend E2E, 123 tests)
 ├── storage/            SQLite ledger + session-scoped image files (ephemeral)
@@ -48,40 +49,45 @@ web      ↛ ml internals
 Cross-boundary imports are prohibited. The frontend talks to the backend over
 HTTP contracts (`/health`, `/inspection/session`, `/chat`,
 `/inspection/{id}/upload`, `/inspection/{id}/analyze`,
-`/inspection/{id}`, DELETE). The backend loads a model artefact only through
-`ml/inference` (`SegmentationEngine`, resolved from `MODEL_PATH` /
-`MODEL_VERSION`; default `ml/experiments/cardd_baseline_ce/best_checkpoint.pt`).
+`/inspection/{id}/consent`, `/inspection/{id}`, DELETE). The backend loads a
+model artefact only through `ml/inference` (`SegmentationEngine`, resolved from
+`MODEL_PATH` / `MODEL_VERSION`, dispatching on the checkpoint's `model_arch`;
+demo default `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt`).
 
 ## 3. Backend layering (`apps/api`)
 
 ```
 Router / API layer      apps/api/routers — validation, status codes, serialisation
         ↓
-Application services    apps/api/{agent,vision,repair,cost,inspection} — use cases,
-                        rules, orchestration (LangGraph workflow, quality validator,
-                        repair rule, cost estimator, consent service)
+Application services    apps/api/{agent,vision,inspection} — use cases,
+                        orchestration (assistant service, quality validator,
+                        consent service)
         ↓
 Infrastructure          apps/api/storage — SQLite ledger + fs image store,
                         session/state/consent/training-sample stores, cleanup;
                         apps/api/container.py wires everything once at startup
 ```
 
-- `agent/graph.py` — LangGraph state graph: START → collect incident / damage
-  location / repair location / insurance → PHOTO → (quality loop) → damage
-  analysis → repair + cost → comparison → consent → finish. `agent/groq_service.py`
-  is the conversational/explanation service; the Groq key is server-side only
-  (`.env`, `GROQ_AUTO_INSPECT_API_KEY`).
+- `agent/assistant.py` — `AssistantService` protocol with
+  `damages_explanation` / `retake_guidance` / `chat_reply`. Production impl
+  `LangChainGroqAssistant` wraps LangChain `ChatGroq` (model
+  `llama-3.3-70b-versatile`, `settings.groq_model`); offline/CI uses the
+  deterministic `StubAssistant`. `build_assistant` picks one from
+  `GROQ_AUTO_INSPECT_API_KEY` (server-side only). No more `groq_service.py`
+  rule-based service (ADR 0011).
+- `agent/graph.py` — minimal LangGraph: `START → llm_turn → END`; each
+  `POST /chat` appends the user message and asks the assistant for a reply
+  grounded in the stored prompt-safe evidence. The graph never waits on
+  questionnaire fields.
 - `vision/quality.py` — heuristic capture-quality gates
   (blur/dark/glare/contrast → TOO_BLURRY / TOO_DARK / EXCESSIVE_GLARE /
-  INSUFFICIENT_CONTEXT), never inspects model output.
-- `inspection/` — typed `InspectionContext` + provenance; user-vs-model
-  comparison (AGREEMENT / PARTIAL_AGREEMENT / DISAGREEMENT / NOT_APPLICABLE).
-- `repair/`, `cost/` — `DemoRepairEstimator` (labelled demonstration rule) and
-  `UnavailableCostEstimator` (honest `DATA_UNAVAILABLE`; synthetic demo quote
-  only behind `ALLOW_SYNTHETIC_ESTIMATE` and always labelled
-  "DEMO / SYNTHETIC ESTIMATE — NOT A REAL QUOTE").
+  WRONG_ANGLE / DAMAGE_NOT_VISIBLE / INSUFFICIENT_CONTEXT), never inspects
+  model output.
+- `inspection/` — typed `InspectionContext` + provenance (USER / MODEL /
+  DERIVED / INFERRED / SYSTEM) and the consent service. No repair/cost
+  comparison fields exist (removed by ADR 0011).
 - `storage/` — `FsSqliteImageStore` with EXIF stripping, image assets
-  ledgered in SQLite; sessions close via soft-close (GET after finish → 410)
+  ledgered in SQLite; sessions close via soft-close (GET after close → 410)
   while the audit row is retained.
 
 ## 4. ML boundary
@@ -89,10 +95,16 @@ Infrastructure          apps/api/storage — SQLite ledger + fs image store,
 Training and inference are separate code paths (ADR 0008: CE over argmax). The
 API depends on a versioned model artefact resolved from configuration and load
 notes (val mIoU, git revision) read from `ml/experiments/registry.json`; it
-never imports `ml/training`. The committed demo checkpoint
-(`cardd_baseline_ce`, val mIoU ≈ 0.048) is explicitly **demonstration-grade
-and underfit**: the product surfaces confidence, a low-confidence banner, and
-the "not verified damage extent" caveat rather than overclaiming.
+never imports `ml/training`. Checkpoints are arch-tagged (`model_arch` key):
+`CarddHybrid` is the default, legacy `CarddUNet` checkpoints keep loading
+(ADR 0010); a base/arch mismatch surfaces as a loud `ModelVersionError`. The
+demo default is `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt`, which must
+be trained; until it exists the real-engine tests skip (not fail). The historical
+fallback `cardd_baseline_ce` (val mIoU ≈ 0.048) was explicitly
+**demonstration-grade and underfit**: the product surfaces confidence, a
+low-confidence banner, and the "not verified damage extent" caveat rather than
+overclaiming. Any quality claim about `cardd_hybrid_ce` is contingent on its
+training and verified inference.
 
 ## 5. Frontend structure (`apps/web`)
 
@@ -102,35 +114,41 @@ Next.js 16 (App Router), React 19, TypeScript strict, Tailwind CSS. Two routes:
   (`public/1.mp4`…`4.mp4`; total ≈ 30.4 s, declared in `lib/video.ts`), "Skip to
   demo" hand-off. Phase O narrative copy remains neutral and marked
   `PENDING_USER_CONFIRMATION` until a vision-capable reviewer confirms it.
-- `/demo` — the inspection journey: chat → context summary → photo guidance →
-  upload (camera on mobile) → capture-quality validation UX with retake
-  guidance → analysis stages → labelled result blocks → consent → completion.
+- `/demo` — the photo-first chat (ADR 0011): the composer accepts a photo
+  attachment (preview, remove, send); analysis runs the capture-quality gate
+  and renders the predicted-mask overlay, class chips, area ratio, and
+  confidence inline in the assistant bubble — with retake guidance on quality
+  failure and inline consent beneath the chat.
 
-Result honesty contract (UI + API): four labelled blocks — WHAT YOU TOLD US
-(provenance: user), WHAT THE MODEL FOUND (provenance: model prediction; image
-denominator only, never cm², ADR 0005), WHAT WE ESTIMATE (shows
-"You have no real quote" unless a labelled synthetic estimate is enabled), WHAT
-WE RECOMMEND (provenance: demo rule). The overlay image is the predicted mask
-only; the low-confidence banner explains the demo model limits.
+Result honesty contract (UI + API): the overlay is the model's predicted mask
+only (MODEL PREDICTION); class labels carry confidence, and an explicit
+low-confidence flag/banner marks preliminary results — never verified damage
+extent. Area ratios are image-denominator, never cm² (ADR 0005). No cost,
+repair-action, or quote block exists anywhere in the UI (ADR 0011), and the
+assistant (LangChain or stub) may only restate facts present in the structured
+evidence.
 
 ## 6. Runtime data flow
 
 ```
 Browser (apps/web)
-  │  session → chat turns (context) → photo upload
+  │  POST /inspection/session → send photo in the composer → analyze
   ▼
 API routers
   │  session store, image store (validate + EXIF strip + ledger)
   ▼
-LangGraph workflow (orchestration only)
-  │  damage_analysis: quality gate → SegmentationEngine (ml/inference) →
-  │    features/confidence/area ratio/overlay → compare user vs model
-  ▼
-Application services
-  │  repair rule + cost estimator (honest states) → explanation
+/analyze (apps/api/routers/inspection.py)
+  │  quality gate → reject: 200 QUALITY_FAILED + assistant retake guidance
+  │  accept: SegmentationEngine (ml/inference; dispatch by model_arch) →
+  │    features / confidence / area ratio / overlay → assistant explanation
   ▼
 Browser
-  │  result blocks + overlay + consent (optional) → finish (session soft-close)
+  │  overlay + class chips + honesty annotations inline; optional consent
+  ▼
+POST /chat → LangGraph turn → assistant reply grounded in stored evidence
+  ▼
+Browser
+  │  follow-up conversation; session soft-closes on expiry/delete (410 on reuse)
 ```
 
 ## 7. Storage
@@ -174,11 +192,14 @@ demo checkpoint is git-ignored, so the real-engine browser journeys and the
 
 ## 9. Honesty rules (relevant even at architecture level)
 
-- Rule-generated cost table ≠ real repair-cost ground truth (ADR 0004).
+- Cost/repair prediction is out of scope (ADR 0011); no synthetic cost labels
+  exist anywhere. The general ground-truth policy (ADR 0004) still governs any
+  label family that exists.
 - Synthetic hidden-damage labels are labels, never validated evidence.
 - No true physical damage area in cm² from an uncontrolled photograph
   (ADR 0005); a normalized image-denominator ratio is used and described as such.
 - The model is the only vision evidence source; no LLM "becomes" the vision model.
 - Research vs product stays two-track: research is segmentation → features →
-  downstream; product is cinematic UI → conversation → photo → inference →
-  results → consent. Neither distorts the other's methodology.
+  confidence-honesty comparison (RQ1/RQ2); product is cinematic UI → photo-first
+  chat → inference → results → consent. Neither distorts the other's
+  methodology.

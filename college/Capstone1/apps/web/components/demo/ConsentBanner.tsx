@@ -1,14 +1,14 @@
 "use client";
 
 interface ConsentBannerProps {
-  waitingFor: string | null;
+  visible: boolean;
   busy: boolean;
   onChoice: (granted: boolean) => void;
 }
 
 /** Optional training consent, always clearly labelled as optional. */
-export default function ConsentBanner({ waitingFor, busy, onChoice }: ConsentBannerProps) {
-  if (waitingFor !== "CONSENT") return null;
+export default function ConsentBanner({ visible, busy, onChoice }: ConsentBannerProps) {
+  if (!visible) return null;
   return (
     <section className="rounded-2xl border border-slate-700 bg-slate-900/80 p-5">
       <h3 className="text-sm font-semibold text-slate-100">Help improve the model?</h3>

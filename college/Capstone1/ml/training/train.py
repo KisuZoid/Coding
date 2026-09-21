@@ -1,10 +1,12 @@
 """Phase 4+ real training instrumented with mIoU/Dice and a checkpoint registry.
 
-Builds on the Phase 3 smoke run: same adapter → dataloader → CarddUNet →
-cross-entropy stack (ADR 0008), plus per-epoch validation with per-class
-IoU/Dice, an optional train-side augmentation, an LR schedule, and a run
-registry appended under `ml/experiments/registry.json` (git-ignored; only
-experiment IDs enter committed docs).
+Builds on the Phase 3 smoke run: same adapter → dataloader → CarddUNet /
+CarddHybrid → cross-entropy stack (ADR 0008, ADR 0010), plus per-epoch
+validation with per-class IoU/Dice, an optional train-side augmentation, an LR
+schedule, and a run registry appended under `ml/experiments/registry.json`
+(git-ignored; only experiment IDs enter committed docs). The ``--model`` flag
+selects the architecture; checkpoints record a ``model_arch`` key that the
+inference engine honours for dispatch (ADR 0003).
 
 This is the experiment harness, not the final research pipeline: the metric
 set and architecture remain provisional until the research document arrives.
@@ -42,6 +44,7 @@ from ml.evaluation.metrics import (  # noqa: E402
     per_class_dice,
     per_class_iou,
 )
+from ml.models.cardd_hybrid import CarddHybrid  # noqa: E402
 from ml.models.cardd_unet import CarddUNet  # noqa: E402
 from ml.training.cardd_dataset import CarddInstanceSegDataset, collate_seg  # noqa: E402
 from ml.training.loss import aggregate_targets, cross_entropy_loss  # noqa: E402
@@ -53,6 +56,7 @@ class TrainingConfig:
 
     data_root: str
     split: str = "train2017"
+    model_arch: str = "cardd_hybrid"
     epochs: int = 5
     batch_size: int = 2
     base: int = 32
@@ -63,6 +67,14 @@ class TrainingConfig:
     augment_train: bool = True
     seed: int = 0
     experiment_label: str = "phase4_baseline"
+
+
+def build_model(arch: str, num_classes: int, base: int) -> torch.nn.Module:
+    if arch in {"cardd_hybrid", "CarddHybrid"}:
+        return CarddHybrid(num_classes=num_classes, base=base)
+    if arch in {"cardd_unet", "CarddUNet"}:
+        return CarddUNet(num_classes=num_classes, base=base)
+    raise ValueError(f"unknown model_arch: {arch}")
 
 
 def git_revision() -> str:
@@ -167,6 +179,7 @@ def parse_args() -> TrainingConfig:
     parser = argparse.ArgumentParser(description="Phase 4 segmentation training run.")
     parser.add_argument("--data-root", required=True, type=Path)
     parser.add_argument("--label", default="phase4_baseline", type=str)
+    parser.add_argument("--model", default="cardd_hybrid", choices=["cardd_unet", "cardd_hybrid"])
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--base", type=int, default=32)
@@ -189,6 +202,7 @@ def parse_args() -> TrainingConfig:
         augment_train=not args.no_augment,
         seed=args.seed,
         experiment_label=args.label,
+        model_arch=args.model,
     )
 
 
@@ -213,7 +227,7 @@ def main() -> None:
 
     probe = CarddInstanceSegDataset(data_root, split=config.split, limit=1, seed=config.seed)
     num_classes = max(probe.category_ids()) + 1  # background + 6 CarDD classes
-    model = CarddUNet(num_classes=num_classes, base=config.base).to(device)
+    model = build_model(config.model_arch, num_classes, config.base).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config.epochs)
 
@@ -249,7 +263,12 @@ def main() -> None:
             chk = _REPO_ROOT / "ml" / "experiments" / config.experiment_label
             chk.mkdir(parents=True, exist_ok=True)
             torch.save(
-                {"model_state": model.state_dict(), "base": config.base, "epoch": e},
+                {
+                    "model_state": model.state_dict(),
+                    "model_arch": config.model_arch,
+                    "base": config.base,
+                    "epoch": e,
+                },
                 chk / "best_checkpoint.pt",
             )
 
@@ -257,7 +276,10 @@ def main() -> None:
         "experiment_id": (f"{config.experiment_label}-{datetime.now(UTC):%Y%m%d-%H%M%S}"),
         "config": asdict(config),
         "dataset": "CarDD-COCO official splits",
-        "model": f"CarddUNet base={config.base} num_classes={num_classes}",
+        "model": (
+            f"{config.model_arch} base={config.base} num_classes={num_classes} "
+            f"params={sum(p.numel() for p in model.parameters())}"
+        ),
         "device": str(device),
         "git_revision": git_revision(),
         "epochs_detail": epochs_detail,

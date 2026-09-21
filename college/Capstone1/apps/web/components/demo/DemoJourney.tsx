@@ -5,13 +5,17 @@ import Link from "next/link";
 
 import ChatPanel from "@/components/demo/ChatPanel";
 import ConsentBanner from "@/components/demo/ConsentBanner";
-import ContextCard from "@/components/demo/ContextCard";
-import PhotoBay from "@/components/demo/PhotoBay";
-import ResultBlocks from "@/components/demo/ResultBlocks";
-import { ApiError, analyzePhoto, createSession, deleteInspection, getHealth, getInspection, sendChat, uploadPhoto } from "@/lib/api";
-import type { ChatMessage, ChatResponse, InspectionStateView } from "@/lib/types";
-
-type PhotoPhase = "ask" | "upload" | "analysing" | "retake" | "done";
+import {
+  ApiError,
+  analyzePhoto,
+  createSession,
+  deleteInspection,
+  getHealth,
+  sendChat,
+  sendConsent,
+  uploadPhoto,
+} from "@/lib/api";
+import type { ChatMessage } from "@/lib/types";
 
 function errorText(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -19,55 +23,15 @@ function errorText(error: unknown): string {
   return String(error);
 }
 
-interface QualityReject {
-  status: string;
-  reasons?: string[];
-}
-
-const QUALITY_REJECT_COPY: Record<string, string> = {
-  TOO_BLURRY: "Your photo looks blurry. Hold the phone steady and retake close up.",
-  TOO_DARK: "Your photo is too dark. Retake it in brighter light.",
-  EXCESSIVE_GLARE: "There's too much glare. Angle the phone away from the light source.",
-  INSUFFICIENT_CONTEXT:
-    "Your photo is too flat and low-contrast. Make sure the damaged area fills the frame.",
-};
-
 export default function DemoJourney() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [waitingFor, setWaitingFor] = useState<string | null>(null);
-  const [finished, setFinished] = useState(false);
-  const [insp, setInsp] = useState<InspectionStateView | null>(null);
+  const [connection, setConnection] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connection, setConnection] = useState<boolean | null>(null);
-  const [photoPhase, setPhotoPhase] = useState<PhotoPhase>("ask");
-  const [photoRejected, setPhotoRejected] = useState<string | null>(null);
-
-  async function fetchInspection(id: string) {
-    const { state } = await getInspection(id);
-    setInsp(state);
-  }
-
-  async function runTurn(text: string): Promise<ChatResponse | null> {
-    if (!sessionId || busy) return null;
-    setBusy(true);
-    setError(null);
-    setMessages((m) => [...m, { role: "user", content: text }]);
-    try {
-      const res = await sendChat(sessionId, text);
-      setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
-      setWaitingFor(res.waiting_for);
-      setFinished(res.finished);
-      await fetchInspection(sessionId);
-      return res;
-    } catch (e) {
-      setError(errorText(e));
-      return null;
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [inspectionDone, setInspectionDone] = useState(false);
+  const [consented, setConsented] = useState<string | null>(null);
+  const [consentNote, setConsentNote] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,9 +44,7 @@ export default function DemoJourney() {
       }
       try {
         const session = await createSession();
-        if (cancelled) return;
-        setSessionId(session.session_id);
-        await fetchInspection(session.session_id);
+        if (!cancelled) setSessionId(session.session_id);
       } catch (e) {
         if (!cancelled) setError(errorText(e));
       }
@@ -92,40 +54,86 @@ export default function DemoJourney() {
     };
   }, []);
 
-  const handlePhoto = async (file: File) => {
+  const handleChat = async (text: string) => {
     if (!sessionId || busy) return;
+    setBusy(true);
     setError(null);
-    setPhotoRejected(null);
-    setPhotoPhase("upload");
+    setMessages((m) => [...m, { role: "user", content: text }]);
+    try {
+      const res = await sendChat(sessionId, text);
+      setMessages((m) => [...m, { role: "assistant", content: res.reply }]);
+    } catch (e) {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: `I hit an error: ${errorText(e)}` },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePhoto = async (text: string, file: File) => {
+    if (!sessionId || busy) return;
+    setBusy(true);
+    setError(null);
+    setConsentNote(null);
+    setConsented(null);
+    const message = text || "[Photo attached] — please analyse the damage.";
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: message, preview: URL.createObjectURL(file) },
+    ]);
     try {
       await uploadPhoto(sessionId, file);
-      await analyzePhoto(sessionId);
+      const res = await analyzePhoto(sessionId);
+      const assistant: ChatMessage = res.status === "OK"
+        ? {
+            role: "assistant",
+            content: res.assistant_message,
+            overlay_png_base64: res.overlay_png_base64 ?? undefined,
+            quality_status: res.quality_status,
+            classes_present: res.classes_present,
+            low_confidence: res.low_confidence,
+          }
+        : { role: "assistant", content: res.assistant_message, quality_status: res.quality_status };
+      setMessages((m) => [...m, assistant]);
+      setInspectionDone(res.status === "OK");
     } catch (e) {
-      if (e instanceof ApiError && e.status === 422) {
-        const detail = ((e.body as { detail?: unknown })?.detail ??
-          e.body) as QualityReject | null;
-        const reason =
-          QUALITY_REJECT_COPY[detail?.status ?? ""] ??
-          (detail?.reasons?.[0] ?? "The photo quality was rejected. Please retake it.");
-        setPhotoRejected(reason);
-        setPhotoPhase("retake");
-        return;
-      }
-      setError(errorText(e));
-      setPhotoPhase("ask");
-      return;
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", content: `I couldn't analyse that photo: ${errorText(e)}` },
+      ]);
+    } finally {
+      setBusy(false);
     }
-    setPhotoPhase("analysing");
-    const res = await runTurn("Photo uploaded — what do you think?");
-    setPhotoPhase(res?.waiting_for === "PHOTO" ? "retake" : "done");
+  };
+
+  const handleSend = (text: string, photo?: File) => {
+    if (photo) {
+      void handlePhoto(text, photo);
+    } else {
+      void handleChat(text);
+    }
   };
 
   const handleConsent = async (granted: boolean) => {
-    await runTurn(granted ? "yes" : "no");
-  };
-
-  const handleFinish = async () => {
-    await runTurn("I am done, please wrap up.");
+    if (!sessionId || busy) return;
+    setBusy(true);
+    try {
+      const res = await sendConsent(sessionId, granted ? "GRANTED" : "DECLINED");
+      setConsented(res.decision);
+      setConsentNote(res.note);
+      if (res.decision === "DECLINED") {
+        setMessages((m) => [
+          ...m,
+          { role: "assistant", content: "No problem — your photos are only used for this session and will be deleted when it expires." },
+        ]);
+      }
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const resetAll = async () => {
@@ -140,15 +148,12 @@ export default function DemoJourney() {
     }
     setSessionId(null);
     setMessages([]);
-    setWaitingFor(null);
-    setFinished(false);
-    setInsp(null);
-    setPhotoPhase("ask");
-    setPhotoRejected(null);
+    setInspectionDone(false);
+    setConsented(null);
+    setConsentNote(null);
     try {
       const session = await createSession();
       setSessionId(session.session_id);
-      await fetchInspection(session.session_id);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -156,13 +161,10 @@ export default function DemoJourney() {
     }
   };
 
-  const hasImage = Boolean(insp?.image_asset_id);
-  const analysing = busy && Boolean(insp?.analysis) && !insp?.repair && !insp?.cost;
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
           <span className="text-sm font-semibold tracking-widest uppercase text-slate-100">
             AutoInspect<span className="text-amber-400">-X</span>
           </span>
@@ -181,7 +183,7 @@ export default function DemoJourney() {
             </span>
             <button
               type="button"
-              onClick={resetAll}
+              onClick={() => void resetAll()}
               disabled={busy}
               className="text-xs font-medium text-slate-400 transition hover:text-slate-100 disabled:opacity-40"
             >
@@ -191,7 +193,7 @@ export default function DemoJourney() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-5 py-8">
+      <main className="mx-auto max-w-3xl px-5 py-8">
         {connection === false && (
           <div className="mb-6 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
             The AutoInspect-X API is not reachable. Start the backend
@@ -205,67 +207,40 @@ export default function DemoJourney() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-          <div className="order-2 h-[560px] lg:order-1 lg:sticky lg:top-20 lg:h-[calc(100vh-7rem)]">
-            <ChatPanel
-              messages={messages}
+        <div className="h-[62vh] min-h-[480px]">
+          <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
+        </div>
+
+        {inspectionDone && (
+          <div className="mt-5 space-y-4">
+            <ConsentBanner
+              visible={consented === null}
               busy={busy}
-              disabled={finished}
-              onSend={(t) => void runTurn(t)}
+              onChoice={(g) => void handleConsent(g)}
             />
-          </div>
-
-          <div className="order-1 space-y-5 lg:order-2">
-            <ContextCard insp={insp} />
-
-            <PhotoBay
-              waitingFor={waitingFor}
-              hasImage={hasImage}
-              busy={busy}
-              phase={photoPhase}
-              rejectReason={photoRejected}
-              onFile={(f) => void handlePhoto(f)}
-            />
-
-            <ConsentBanner waitingFor={waitingFor} busy={busy} onChoice={(g) => void handleConsent(g)} />
-
-            {waitingFor === "FINISH" && !finished && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void handleFinish()}
-                className="w-full rounded-xl border border-slate-600 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-40"
-              >
-                {busy ? "Working..." : "Finish and show summary"}
-              </button>
+            {consentNote && (
+              <p className="px-1 text-xs leading-relaxed text-slate-500">{consentNote}</p>
             )}
-
-            <ResultBlocks insp={insp} analysing={analysing} />
-
-            {finished && (
+            {consented === "GRANTED" && (
               <section className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-5">
-                <h3 className="text-sm font-semibold text-emerald-200">Inspection complete</h3>
+                <h3 className="text-sm font-semibold text-emerald-200">Consent saved</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  Your photos are kept only for this session and are deleted when
-                  it expires. Thanks for using AutoInspect-X.
+                  {consentNote}
                 </p>
-                <Link
-                  href="/"
-                  className="mt-4 inline-block text-sm font-medium text-amber-300 hover:text-amber-200"
-                >
-                  Back to the intro
-                </Link>
               </section>
             )}
-
-            {!finished && (
-              <p className="px-1 pb-6 text-center text-[11px] leading-relaxed text-slate-500">
-                Demonstration build. Model findings, repair suggestions and cost are
-                machine predictions with explicit labels — never a real quote.
-              </p>
-            )}
+            <p className="px-1 pb-6 text-center text-[11px] leading-relaxed text-slate-500">
+              Demonstration build. Findings are machine predictions with explicit
+              labels — never a claim of verified damage extent.
+            </p>
+            <Link
+              href="/"
+              className="mt-2 inline-block text-center text-sm font-medium text-amber-300 hover:text-amber-200"
+            >
+              Back to the intro
+            </Link>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );

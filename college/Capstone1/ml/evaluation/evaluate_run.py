@@ -55,6 +55,7 @@ from ml.evaluation.small_damage import (  # noqa: E402
     quantile_area,
     small_damage_summary,
 )
+from ml.models.cardd_hybrid import CarddHybrid  # noqa: E402
 from ml.models.cardd_unet import CarddUNet  # noqa: E402
 from ml.training.cardd_dataset import (  # noqa: E402
     TARGET_SIZE,
@@ -280,7 +281,12 @@ def main() -> None:
 
     probe = CarddInstanceSegDataset(args.data_root, "val2017", limit=1)
     num_classes = max(probe.category_ids()) + 1
-    model = CarddUNet(num_classes=num_classes, base=base).to(device)
+    arch = ckpt.get("model_arch") or "cardd_unet"
+    model: torch.nn.Module
+    if arch == "cardd_hybrid":
+        model = CarddHybrid(num_classes=num_classes, base=base).to(device)
+    else:
+        model = CarddUNet(num_classes=num_classes, base=base).to(device)
     model.load_state_dict(ckpt["model_state"])
 
     threshold = quantile_area(0.25, str(args.data_root))  # train-split p25

@@ -1,8 +1,9 @@
-"""LangGraph workflow state (Phase G).
+"""LangGraph workflow state (photo-first, ADR 0011).
 
 A typed, JSON-serialisable dict persisted into ``session_states`` between chat
-turns. Kept deliberately shallow: nested facts are stored as plain dicts so the
-state round-trips through the state store without pydantic plumbing.
+turns. The old questionnaire gates (incident / vehicle / repair location /
+insurance / waiting_for / halt) are gone: analysis arrives via the /analyze
+signpost, chat continues from the stored evidence.
 """
 
 from __future__ import annotations
@@ -19,27 +20,10 @@ class InspectionState(TypedDict, total=False):
     session_id: str
     messages: list[ConversationMessage]
 
-    waiting_for: str | None
-    optional_cursor: int
-
-    incident: str | None
-    damage_location: str | None
-    vehicle_make: str | None
-    vehicle_model: str | None
-    vehicle_year: int | None
-    repair_city: str | None
-    insurance_claim: bool | None
-
     image_asset_id: str | None
-    analysis: dict[str, Any] | None
-    feature_summary: dict[str, Any] | None
-    comparison: str | None
-
-    repair: dict[str, Any] | None
-    cost: dict[str, Any] | None
+    quality: dict[str, Any] | None
+    inspection: dict[str, Any] | None
     explanation: str | None
     consent: str | None
 
     reply: str | None
-    halt: bool
-    finished: bool

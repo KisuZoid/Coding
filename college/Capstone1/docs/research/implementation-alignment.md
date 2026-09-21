@@ -1,151 +1,144 @@
 # Implementation ↔ Research Reconciliation
 
 Status of the codebase against `AutoInspect-X_Research_Report_Corrected.md`
-(the canonical research document, added to the repo root on 2026-09-08) and the
+(the canonical research document; photo-first rewrite dated 2026-09-21) and the
 bootstrap brief `CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md`.
 
-Legend for **Current implementation status**: `IMPLEMENTED` · `PARTIAL` ·
-`NOT STARTED` · `BLOCKED BY DATA`.
+Legend: `IMPLEMENTED` · `PARTIAL` · `NOT STARTED` · `PLANNED` · `REMOVED`
+
+Scope note: this file was reconciled on 2026-09-21 to match **ADR 0011
+(photo-first scope)** and **ADR 0010 (CarddHybrid)**. Sections describing a
+cost/repair/multimodal research core from the previous version are removed along
+with those tasks.
 
 ---
 
-## 1. Research requirement
+## 1. Research requirement (photo-first)
 
-**Research-formalizable statement (report §12–§13):** the contribution is a
-multimodal cross-attention system that fuses pixel-level damage segmentation +
-vehicle-part masks + structured metadata, and produces repair action, hidden
-structural risk, and uncertainty-calibrated cost intervals (B1 vision-only /
-B2 simple fusion / P cross-attention comparison).
+**Research statement (research report §3, §5.7, §9):** the contribution is a
+CNN+Transformer hybrid segmentation model (`CarddHybrid`) compared against a
+plain U-Net baseline (`CarddUNet`) for damage-segmentation quality and
+confidence honesty on CarDD. The system is photo-first: quality gate → mask →
+evidence payload → honest explanation, with no cost/repair outputs.
 
 ### Current implementation status
 
-`BLOCKED BY DATA` for the downstream heads, `PARTIAL` for the segmentation core.
+- Segmentation core: `IMPLEMENTED` (demo hybrid, baseline SUPERSEDED).
+- Hybrid model: `IMPLEMENTED` as architecture **and** training (`cardd_hybrid_ce`
+  trained 2026-09-21; val mIoU 0.0504 / test 0.0586, MEASURED).
+- Research comparison (RQ1/RQ2): `PARTIAL` — A3 hybrid measured; A2 baseline
+  extension and the RQ2 metric still `PLANNED`.
 
 ### Evidence in repository
 
-- Segmentation core: `ml/models/cardd_unet.py` (ADR 0006, raw PyTorch small
-  U-Net), trained end-to-end on GPU (`ml/experiments/phase3_smoke`,
-  `ml/experiments/phase4_baseline`).
-- Experiment harness: `ml/training/train.py`, `ml/evaluation/metrics.py`,
-  shared loss `ml/training/loss.py`.
-- ADRs 0004 (ground-truth policy), 0005 (no part masks), 0006 (framework).
+- Baseline: `ml/models/cardd_unet.py` (ADR 0006) + `cardd_baseline_ce`
+  checkpoint (val mIoU 0.0475, MEASURED, underfit, SUPERSEDED).
+- Hybrid: `ml/models/cardd_hybrid.py` (ADR 0010, ~3.2 M params measured);
+  `cardd_hybrid_ce/best_checkpoint.pt` trained + `evaluation_summary.json`
+  written (MEASURED).
+- Experiment harness: `ml/training/train.py` (`--model cardd_unet|cardd_hybrid`),
+  `ml/evaluation/metrics.py`, shared loss `ml/training/loss.py`.
+- Inference + honesty: `ml/inference/engine.py` (`model_arch` dispatch),
+  `apps/api/container.py`.
+- Scope: `docs/decisions/0010-cardd-hybrid-model.md`,
+  `docs/decisions/0011-photo-first-scope.md`.
 
 ### Gap
 
-- No metadata source, no fusion layer, no repair-action labels, no cost labels,
-  no hidden-damage labels. The research question cannot be answered with
-  CarDD-only data (see Phase 11 data-readiness).
-- The report's proposed *part mask + physical area (cm²)* pipeline cannot be
-  built from CarDD (ADR 0005).
+- The honest A1-vs-A3 head-to-head write-up (`research_summary.md`) is not yet
+  written; A2/A4 extended runs are not started.
+- The RQ2 confidence-honesty operational metric is not yet locked.
 
 ### Recommended next action
 
-Finish the segmentation baseline (Phase 8) so that the *vision side* is
-measurable; the downstream comparison (B1/B2/P) waits on the data-readiness
-verdict. Do not implement the fusion or cost heads before that verdict.
+Run A2 (U-Net extended) for a fair underfit-vs-architecture separation; lock
+RQ2; write `research_summary.md` before any performance statement.
 
 ---
 
-## 2. Segmentation framework (report §16 vs ADR 0006)
+## 2. Segmentation framework (research report §8 vs ADR 0006/0010)
 
 ### Research requirement
 
-Report §16 recommends a vision backbone of **YOLOv8-Seg / SegFormer**; §15 of
-the bootstrap brief says to begin with a small Ultralytics YOLO variant if the
-local GPU supports it.
+Report §8 recommends a CNN+Transformer hybrid (bottleneck transformer) against
+the U-Net baseline; the earlier version's YOLOv8-Seg/SegFormer recommendation is
+superseded by the framework decision below.
 
 ### Current implementation status
 
-`IMPLEMENTED` (differently) — **raw PyTorch small U-Net**, not YOLO.
+`IMPLEMENTED` — raw PyTorch `CarddUNet` baseline + `CarddHybrid` hybrid.
 
 ### Evidence in repository
 
-- `docs/decisions/0006-segmentation-framework.md`: chosen raw PyTorch U-Net;
-  YOLO explicitly deferred to "comparison baseline later, only if fighting for
-  IoU matters".
-- `ml/models/cardd_unet.py`: the U-Net used by the smoke and baseline runs.
+- `docs/decisions/0006-segmentation-framework.md`: raw PyTorch U-Net over
+  ultralytics YOLO; YOLO deferred to a potential later comparison baseline.
+- `docs/decisions/0010-cardd-hybrid-model.md`: transform-borne upgrade —
+  transformer bottleneck at 32×32, `d_model=base*8`, 4 heads, 2 layers,
+  sinusoidal positional encoding; same 7-channel argmax decode and CE loss.
+- `ml/models/cardd_unet.py`, `ml/models/cardd_hybrid.py`.
 
 ### Gap
 
-- The research document and bootstrap both *suggest* YOLO-family as the
-  practical starting point. ADR 0006 overrides: framework choice is a decision
-  recorded as an ADR, and this task's directive keeps the existing U-Net.
+- The hybrid is a researched architecture choice (ADR 0010) but has zero
+  training evidence yet.
 
 ### Resolution (this reconciliation)
 
-The segmentation framework is an **engineering decision, not a research
-contribution**. The research question (see §1) is independent of the detector
-brand: it tests whether segmentation-derived features + metadata + fusion beat
-vision-only baselines. Keeping the U-Net is therefore consistent with the
-research direction; adopting YOLO would be an ADR, not a research change. No
-silent change to the research direction.
+Framework is an **engineering decision, not a research contribution**; the
+research question is independent of the specific CNN brand. The bottleneck-
+transformer design is a standard, GPU-bounded upgrade (see TransUNet et al. in
+the research report §5.4). Keeping both models on the same harness makes the
+comparison clean.
 
 ### Recommended next action
 
-No action. Re-evaluate YOLO only as a comparison *victim* model in a later
-phase, documented by a new ADR, when the goal is an IoU benchmark rather than
-the downstream research question.
+Train both under the locked schedule (see §6) before any architecture comment.
 
 ---
 
-## 3. Part masks and the normalized damage-area feature (report §13.1 vs ADR 0005)
+## 3. Damage-area feature (ADR 0005/0009 vs the report's surface-area claim)
 
 ### Research requirement
 
-Report §13.1 defines the physical damage area
-
-```
-A_phys = ( sum S_damage / sum S_part ) × A_part_known(model)
-```
-
-and the bootstrap's research feature is
-
-```
-normalized_damage_area = damaged_mask_pixels / affected_part_pixels
-```
+Earlier report version proposed a physical surface area in cm². Current version
+(§3) defines only `damaged_pixels / total_image_pixels` — a normalized
+DERIVED FEATURE, explicitly not cm².
 
 ### Current implementation status
 
-`BLOCKED BY DATA` for the research feature; the image-denominator variant is
-`IMPLEMENTED` as a DERIVED FEATURE.
+`IMPLEMENTED` (image-denominator ratio in `ml/inference/features.py`);
+part-normalized form `normalized_damage_area` reserved and unavailable.
 
 ### Evidence in repository
 
-- `docs/decisions/0005-cardd-part-mask-gap.md`: CarDD provides damage masks only,
-  **no vehicle-part masks** → `damaged_pixels / part_pixels` is not implemented
-  and not reported from CarDD-only data.
+- `docs/decisions/0005-cardd-part-mask-gap.md`: CarDD has damage masks, **no
+  vehicle-part masks** → `damaged_pixels / part_pixels` not implemented.
+- `docs/decisions/0009-part-segmentation-decision.md`: part segmentation not
+  adopted this cycle; `damage_area_ratio_image` is the only area feature.
 - `ml/datasets/cardd_audit.py` + `ml/datasets/reports/cardd_audit.json`:
-  annotation-level audit; no part annotations exist in the schema.
-- The adapter exposes mask geometry but never a part-normalized ratio.
+  no part annotations in the schema.
 
 ### Gap
 
-- `A_phys` (cm²) requires known part surface dimensions and a part mask. Neither
-  exists. Any interface claiming physical area would violate ADR 0004/0005.
-- `normalized_damage_area` (part-normalized) is reserved and unavailable until a
-  part-mask source is adopted via a new ADR.
+`A_phys` (cm²) requires part masks + calibration; both absent. Any interface
+claiming physical area would violate ADR 0004/0005.
 
 ### Recommended next action
 
-**Decided (ADR 0009, Phase 10): part segmentation is not adopted this cycle.**
-The image-denominator `damage_area_ratio_image` (DERIVED FEATURE) is the only
-area feature produced. If a part source becomes a requirement in a later cycle,
-candidates (e.g. VeHIDE/CDD with part annotations, per report §15) must be
-evaluated for licence + label mapping first, and adopted via a new ADR with
-full preprocessing/dedup/split policy. Do **not** generate fake part masks.
+None — current contract is already the honest one; keep reserved names unused.
 
 ---
 
-## 4. Hidden structural damage head via Focal Loss (report §13.3.A, §12.2)
+## 4. Hidden structural damage head (earlier report §12–§13)
 
 ### Research requirement
 
-Report proposes `P(H=1 | F)` — a binary hidden-damage head trained with focal
-loss, conditioned on impact location, deformation area, and vehicle geometry.
+Earlier version proposed `P(H=1 | F)` with focal loss. Removed with the
+photo-first scope.
 
 ### Current implementation status
 
-`NOT STARTED` — correctly out of scope.
+`REMOVED` — correctly out of scope, as it was before.
 
 ### Evidence in repository
 
@@ -153,169 +146,161 @@ loss, conditioned on impact location, deformation area, and vehicle geometry.
   unless real ground-truth labels exist; synthetic labels do not qualify.
 - `docs/decisions/0004-ground-truth-labelling-policy.md`: synthetic hidden-damage
   labels are not evidence.
-- `CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md` §3: optional, real labels only.
-- No code or labels in the repository reference hidden damage.
-
-### Gap
-
-- CarDD has no teardown/repair records. `P(Hidden)` cannot be trained or
-  evaluated honestly.
+- No code or labels reference hidden damage.
 
 ### Recommended next action
 
-Keep marked as **future/optional**. If real teardown-labelled data ever appears,
-add it via a new ADR (source, licence, label definition) before implementing the
-head.
+Keep marked future/optional. If real teardown-labelled data ever appears, add it
+via a new ADR before implementing.
 
 ---
 
-## 5. Quantile cost interval head (report §13.3.B)
+## 5. Repair cost and repair action (removed — ADR 0011)
 
 ### Research requirement
 
-`[C_low, C_high]` via pinball / quantile loss (τ=0.10 / 0.90), with interval
-coverage evaluated as carefully as point error.
+Earlier version required quantile cost intervals (`P10/P50/P90`) and repair
+action. **Removed by ADR 0011** (accepted 2026-09-21): CarDD has no observed
+cost or action labels; rule tables are SYNTHETIC LABEL.
 
 ### Current implementation status
 
-`NOT STARTED` — blocked pending a real observed-cost data verdict.
+`REMOVED` — `apps/api/cost/`, `apps/api/repair/` deleted; all cost/quote/amount
+fields, `CostPayload`/`RepairPayload`, `ALLOW_SYNTHETIC_ESTIMATE`, and the
+`p10/p50/p90` demo structure gone. Enforced by tests
+(`_assert_no_forbidden_fields` in `tests/test_e2e_integration.py`).
 
 ### Evidence in repository
 
-- `docs/research/problem-definition.md` (Out of scope / open questions): cost
-  ground truth unresolved; rule-based costs are SYNTHETIC LABEL.
-- `docs/research/research-scope.md` (Metrics): quantile loss, coverage, width.
-- `CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md` §19, §20: cost is a separate
-  service; no real-looking prices hard-coded; cost research requires validated
-  observed-cost data.
-- No cost code exists.
+- `docs/decisions/0011-photo-first-scope.md` (scope cut, contract
+  simplification, assistant replacement).
+- `tests/test_e2e_integration.py`, `tests/test_agent_assistant.py`,
+  `tests/test_agent_graph.py`.
 
-### Gap
+### Gap / recommended next action
 
-- CarDD has no repair cost annotations. No real observed-cost dataset is
-  integrated. Synthetic price tables may be used for UI/pipeline development
-  only (§19), never presented as ground truth.
-
-### Recommended next action
-
-Phase 11 data-readiness assessment. If observed repair-cost labels are missing,
-**stop cost-model implementation**; pattern for the UI is
-"Estimate unavailable / insufficient validated data", not a fabricated number.
+None. Do **not** reintroduce cost/repair fields without a new ADR and real
+ground-truth data.
 
 ---
 
-## 6. Segmentation metrics (report §22 vs Phase 4 metric harness)
+## 6. Experiment harness and metrics (research report §12–§14)
 
 ### Research requirement
 
-Report §22 and bootstrap §25 require for segmentation: **mAP**, IoU, Dice/F1,
-precision/recall, per-class AP. Small-damage recall is called out in the
-bootstrap §15 comparison list.
+Report §12–§14 require: locked baseline config, softmax CE over argmax target,
+mIoU/Dice/pixel accuracy/per-class metrics, small-damage slice, and an
+RQ2 confidence-honesty evaluation; test split evaluated once.
 
 ### Current implementation status
 
-`PARTIAL`.
+`IMPLEMENTED` for the segmentation metrics and harness (Phase 4/6/7/8);
+`PLANNED` for RQ2 honesty evaluation.
 
 ### Evidence in repository
 
-- `ml/evaluation/metrics.py`: mean IoU, per-class IoU, mean Dice, per-class
-  Dice (confusion-matrix based, background excluded).
-- `ml/training/train.py`: per-epoch val mIoU/mDice + pixel accuracy.
-- `tests/test_evaluation_metrics.py`: unit tests for those functions.
+- `docs/research/segmentation-experiment-config.md` (locked design: official
+  splits, 7 channels, 512×512, batch 2 — 2.85 GB peak VRAM measured — Adam
+  1e-3 wd 1e-5, CosineAnnealingLR, 5 epochs, seed 0, best val mIoU checkpoint).
+- `ml/evaluation/metrics.py` (IoU/Dice/precision/recall, background excluded,
+  absent classes 0.0); `ml/evaluation/small_damage.py` (train p25 ≈ 3,013.5 px
+  @512, measured); `ml/evaluation/evaluate_run.py` (montages, summary).
+- `ml/training/loss.py::cross_entropy_loss` (ADR 0008).
 
 ### Gap
 
-- **Precision / recall per class ‒ not yet computed.**
-- **mAP (instance-level) ‒ not implemented.** The current metric harness is
-  pixel confusion based (semantic, argmax over class channels). It does not
-  evaluate instance-level mask matching (COCO-style AP).
-- **Small-damage slice ‒ not yet defined or evaluated.**
-- No qualitative prediction export yet.
+- RQ2 has **no locked operational metric** yet (`research_summary.md` must not
+  report honesty numbers without it).
+- mAP (instance-level) remains not implemented — acceptable for the current
+  pixel-mask RQ, noted as a limitation in the research report §14.
 
 ### Recommended next action
 
-Phase 7: extend the metric harness (precision/recall, per-class), define and
-document a small-damage criterion from the audit statistics, export qualitative
-montages (original / ground truth / prediction / overlay).
+Lock the RQ2 metric (proposed: separation of mean-confidence / low-flag
+distributions between agreement and disagreement groups vs CarDD val); evaluate
+A2/A3/A4 with the same harness.
 
 ---
 
-## 7. Dataset scope (report §15 vs repo)
+## 7. Dataset scope (research report §5.2, §7 vs repo)
 
 ### Research requirement
 
-Report §15 lists CarDD, CDD 2025, CrashCar101 as options and proposes a
-synthetic metadata DB joined from public pricing data.
+Report §7: CarDD is the sole integrated dataset (REAL GROUND TRUTH); other
+public sources (VehiDE, CrashCar101) are reviewed as literature, not integrated.
 
 ### Current implementation status
 
-`IMPLEMENTED` for CarDD-COCO only; other sources `NOT STARTED`.
+`IMPLEMENTED` for CarDD-COCO only; other sources `NOT STARTED` (correctly).
 
 ### Evidence in repository
 
 - `ml/datasets/cardd_adapter.py`, `cardd_audit.py`, `cardd_vis.py`.
-- `ml/datasets/reports/cardd_audit.json` (train 2816 / 6211 ann, val 810 / 1744,
-  test 374 / 785; 6 classes, counts consistent with the report's "4,000 images /
-  ~9,000 instances" when the three splits are summed: 4,000 images, 8,740
-  instances).
+- `ml/datasets/reports/cardd_audit.json` (train 2816 / 6211, val 810 / 1744,
+  test 374 / 785; 6 classes; sums to 4,000 images / 8,740 instances).
 - `.gitignore`: raw datasets stay out of Git.
 
 ### Gap
 
-- No metadata dataset, no repair-cost dataset, no part-annotated dataset
-  integrated. The report's other sources (CDD 2025 / CrashCar101) are not
-  assessed for licence or label mapping.
-- Report's CarDD totals match our audit (4,000 images, ~8,740 instances vs
-  report's "9,000 instances") — reported as close, not identical.
+- No metadata/cost/part-annotated dataset integrated — and none is needed under
+  ADR 0011.
+- The report flags "CDD (2025)" and "Insurance-Damage-v2" as UNVERIFIED; they
+  are not used as evidence.
 
 ### Recommended next action
 
-Keep CarDD as the sole integration until the part/cost/metadata decisions
-(Phase 10/11) determine whether a second source is required. Any new dataset
-enters with licence + label mapping + split policy (experiment-principles §3).
+Keep CarDD as the sole integration. Any new dataset enters with licence + label
+mapping + split policy (experiment-principles §3) and a new ADR.
 
 ---
 
 ## 8. Claims the repository cannot yet support
 
-These report statements describe future output. Do not present them as current
-capability:
-
-| Report claim | Status | Binding constraint |
+| Claim | Status | Binding constraint |
 |---|---|---|
+| CarddHybrid improves segmentation quality over the baseline | Weak positive only — `cardd_hybrid_ce` val mIoU 0.0504 > 0.0475, test 0.0586 > 0.0500 (MEASURED); model still underfit, small-damage slice ≈ 0 | Fair-comparison rule: A2/A4 + write-up `research_summary.md` still pending; claim level capped at the measured numbers |
+| Confidence-honesty difference between A1–A4 | No evidence — metric not locked | RQ2 operational definition missing |
 | Physical damage area in cm² | Not derivable | ADR 0004/0005; no scale reference |
 | `normalized_damage_area` (part-normalized) | Not derivable | ADR 0005; no part masks |
 | Hidden structural risk probability | Not trainable | No teardown labels |
-| Repair-action classification | Not trainable | No action labels (Phase 11) |
-| Quantile cost intervals with coverage | Not evaluable | No observed cost labels |
-| Cross-attention fusion claim | Not implemented | Would require B1/B2/P on same data |
-| mAP / instance-matched metrics | Not implemented | Phase 7 gap |
+| Repair-action / repair-cost prediction | Removed | ADR 0011 |
+| Cost quantiles with coverage | Removed / no data | ADR 0011 |
+| mAP / instance-matched metrics | Not implemented | Not required for the locked pixel RQ; documented limitation |
 
 ---
 
 ## 9. Explicitly future / optional per the research direction
 
-- Hidden-damage head — optional, real labels only (bootstrap §3).
-- Part segmentation — only if the research question needs `part_pixels`; adopt
-  via ADR with licence/mapping (bootstrap §16; this task's Phase 10).
-- External smartphone validation set (300–1,000 images) for domain-shift
-  evaluation (bootstrap §23).
-- Multi-angle / 3D-aware extension and MCDropout ensembles — publication-stage
-  extensions (report §"Ambitious Version"), not required for the core research
+- RQ2 confidence-honesty experiment — the open portion of the current research
   question.
-- Grad-CAM / SHAP explainability — product/UX layer, later than the research
-  comparison.
-
+- MC Dropout / Deep Ensembles as confidence layers — extensions (research report
+  §5.6), each via its own ADR.
+- External smartphone validation set (300–1,000 images) — domain-shift
+  evaluation (§24 blockers).
+- Multi-angle / 3-D-aware extension, Grad-CAM / SHAP explainability,
+  part segmentation, hidden-damage head — out of scope today (research report
+  §15–§16, §6).
+  
 ---
 
-## 10. Citation / data-integrity notes
+## 10. Citation / data-integrity notes (updated 2026-09-21)
 
-- The report's CarDD DOI link points to a GitHub repository rather than the
-  paper page; the bibliographic line (Wang / Li, IEEE T-ITS, "CarDD...") is
-  recorded as read from the report and has **not been independently verified**
-  by the repository. Treat it as report-provided, not confirmed.
-- Market figures (§9) and commercial-system descriptions (§8) are report content
-  only; nothing in the repo validates them and they are not used in any claim.
+- **CarDD DOI corrected:** the earlier report cited
+  `10.1109/TITS.2022.3225828` (a GitHub link); the verified citation is
+  **IEEE T-ITS vol. 24, no. 7, pp. 7202–7214, 2023, DOI 10.1109/TITS.2023.3258480**,
+  arXiv:2211.00945 — verified against the CarDD project page (material
+  correction, recorded in the research report references).
+- **VehiDE figures corrected:** verified VehiDE = 13,945 images / 32,000+
+  instances / 8 classes (KSE 2023). The previously listed "12,000 / 61 / 26" was
+  not verified and matches the ALBERT dataset description instead; it is treated
+  as UNVERIFIED in the report.
+- **UNVERIFIED, not used as evidence:** "CDD (2025)", "Insurance-Damage-v2",
+  and the individual "Top 15 papers" entries (Sharma 2025, Patel 2025, Vignesh
+  2025, Zhang 2023, Chen & Schmidt 2024) from the previous report version, which
+  could not be independently verified and are dropped/replaced by the verified
+  corpus in the research report §5.
+- Market figures and commercial-system descriptions remain report content only;
+  nothing in the repo validates them and they are not used in any claim.
 
 ---
 
@@ -325,9 +310,12 @@ capability:
 |---|---|---|
 | 1 | CarDD has no part masks → `normalized_damage_area` unavailable; only image-denominator ratio | ADR 0005 |
 | 2 | Segmentation framework = raw PyTorch U-Net; YOLO deferred | ADR 0006 |
-| 3 | Physical cm² / hidden damage / real costs all out of scope until data supports them | ADRs 0004, plus this document |
-| 4 | Research report + bootstrap docs added to repo root (2026-09-08) | this document / MEMORY |
+| 3 | Physical cm² / hidden damage / real costs all out of scope until data supports them | ADRs 0004, 0009, plus this document |
+| 4 | Research report + bootstrap docs added to repo root (2026-09-08) | MEMORY |
+| 5 | BCE incompatible with argmax decode → softmax CE over argmax target | ADR 0007 (superseded) / ADR 0008 |
+| 6 | **CarddHybrid (CNN+transformer) added as the proposed segmentation model;** checkpoints carry `model_arch` | ADR 0010 |
+| 7 | **Photo-first scope: cost/repair/questionnaire removed; single assistant; composer chat** | ADR 0011 |
+| 8 | **Research report rewritten to photo-first; literature review re-verified; CarDD/VehiDE citations corrected; unverifiable prior citations flagged UNVERIFIED** | research report; this document |
 
 No research direction was silently modified. Where the report and repository
-disagree (framework, part masks), the divergence is recorded here and in the
-relevant ADRs, and the research question itself is unaffected.
+disagree, the divergence is recorded here and in the relevant ADRs.

@@ -23,15 +23,20 @@ export interface UploadResponse {
   note: string;
 }
 
+/** POST /inspection/{id}/analyze — photo-first, no cost/repair fields. */
 export interface AnalyzeResponse {
   session_id: string;
+  status: "OK" | "QUALITY_FAILED";
+  assistant_message: string;
   asset_id: string;
+  quality_status: string;
+  quality_reasons: string[];
+  inspection: InspectionPayload | null;
+  classes_present: Record<string, string>;
   low_confidence: boolean;
   damage_fraction: number;
   mean_confidence: number;
-  classes_present: Record<string, string>;
-  analysis: AnalysisPayload;
-  overlay_png_base64: string;
+  overlay_png_base64: string | null;
 }
 
 export interface ChatRequest {
@@ -42,8 +47,6 @@ export interface ChatRequest {
 export interface ChatResponse {
   session_id: string;
   reply: string;
-  waiting_for: string | null;
-  finished: boolean;
   request_id: string;
 }
 
@@ -56,64 +59,44 @@ export interface ConsentResponse {
   note: string;
 }
 
-/** Shape of the `analysis` dict written by POST /inspection/{id}/analyze. */
-export interface AnalysisPayload {
-  classes_present?: Record<string, string>;
-  model_classes?: Record<string, string>;
-  damage_fraction?: number;
-  mean_confidence?: number;
-  low_confidence?: boolean;
-  per_class_area_ratio_image?: Record<string, number>;
+/** The `inspection` dict written by POST /inspection/{id}/analyze. */
+export interface InspectionPayload {
+  classes_present: Record<string, string>;
+  per_class_area_ratio_image: Record<string, number>;
+  damage_area_ratio_image?: number;
   num_instances?: number;
+  low_confidence?: boolean;
   low_confidence_instances?: number;
+  mean_confidence?: number;
+  damage_fraction?: number;
   width?: number;
   height?: number;
-  damage_area_ratio_image?: number;
-  features?: Record<string, unknown>;
-  overlay_png_base64?: string;
-}
-
-export interface RepairPayload {
-  action?: string;
-  rule?: string;
-  reason?: string;
-}
-
-export interface CostPayload {
-  status?: string;
-  explanation?: string;
-  is_synthetic_demo?: boolean;
-  synthetic_label?: string | null;
-  p10?: { amount: number; currency: string } | null;
-  p50?: { amount: number; currency: string } | null;
-  p90?: { amount: number; currency: string } | null;
+  quality?: { status: string; reasons: string[] };
+  model_notes?: string[];
+  model_metadata?: Record<string, unknown>;
 }
 
 export interface ChatMessage {
   role: string;
   content: string;
+  /** Local thumbnail shown inside the user bubble for an attached photo. */
+  preview?: string;
+  /** Inline result attachment for an assistant analysis message. */
+  overlay_png_base64?: string;
+  quality_status?: string;
+  classes_present?: Record<string, string>;
+  low_confidence?: boolean;
 }
 
 /** The inspection state returned by GET /inspection/{id} (`state` field). */
 export interface InspectionStateView {
   session_id: string;
-  incident?: string;
-  damage_location?: string;
-  repair_city?: string;
-  insurance_claim?: boolean;
-  optional_cursor?: number;
-  waiting_for?: string | null;
-  halt?: boolean;
-  finished?: boolean;
-  consent?: string;
-  comparison?: string;
   image_asset_id?: string;
   messages?: ChatMessage[];
-  analysis?: AnalysisPayload;
-  feature_summary?: Record<string, unknown>;
-  repair?: RepairPayload;
-  cost?: CostPayload;
-  model_classes?: Record<string, string>;
+  inspection?: InspectionPayload | null;
+  quality?: { status: string; reasons: string[] };
+  explanation?: string;
+  consent?: string;
 }
 
 export interface InspectionStateResponse {

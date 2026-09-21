@@ -43,15 +43,16 @@ Derived from segmentation masks, per damage region:
 | Feature | Category | Note |
 |---|---|---|
 | Damage type | MODEL PREDICTION | Carries model confidence |
-| Damage area ratio | DERIVED FEATURE | Damaged pixels ÷ part pixels. Normalized, unitless |
-| Location on vehicle | DERIVED FEATURE | Relative to the segmented part |
-| Affected part | MODEL PREDICTION | Carries model confidence |
+| Damage area ratio | DERIVED FEATURE | Damaged pixels ÷ total image pixels. Image-denominator, unitless (ADR 0005, ADR 0009) |
+| Location in image | DERIVED FEATURE | Bbox / centroid in image coordinates. CarDD has no part masks, so location is image-relative only |
 | Segmentation confidence | MODEL PREDICTION | Propagate downstream; do not discard |
 | Geometry descriptors | DERIVED FEATURE | Shape statistics of the mask |
 
-Do not convert the area ratio into cm². An uncontrolled photograph carries no
-scale reference, and camera distance changes apparent size. If physical area is
-ever required, it needs an explicit calibration method, documented and validated.
+CarDD provides no part masks (ADR 0005, ADR 0009): never report a part-normalized
+ratio or part-relative location. Do not convert the area ratio into cm². An
+uncontrolled photograph carries no scale reference, and camera distance changes
+apparent size. If physical area is ever required, it needs an explicit
+calibration method, documented and validated.
 
 ## 5. Label integrity
 
@@ -59,21 +60,24 @@ Carry the label category through code, storage, and the interface:
 
 | Category | Example in this project |
 |---|---|
-| REAL GROUND TRUTH | Human-annotated segmentation mask |
-| WEAK LABEL | Severity inferred from a free-text claim description |
-| SYNTHETIC LABEL | Repair cost produced by a rule or price table |
-| DERIVED FEATURE | Damage area ratio |
-| MODEL PREDICTION | Predicted repair action |
-| ASSUMPTION | A chosen labour rate |
+| REAL GROUND TRUTH | Human-annotated CarDD segmentation mask |
+| WEAK LABEL | None currently; a free-text severity claim would be weak |
+| SYNTHETIC LABEL | None currently; synthetic cost labels were removed (ADR 0011) |
+| DERIVED FEATURE | Damage area ratio (image-denominator) |
+| MODEL PREDICTION | Segmentation mask / per-class damage detection |
+| ASSUMPTION | A chosen area-ratio threshold for the "small damage" slice |
 
-A column named `repair_cost` must make its category explicit — in the schema, in
-the dataset documentation, and in any figure that uses it.
+No cost or repair field exists in the schema, dataset documentation, or UI; any
+future label family must carry its category explicitly (ADR 0004).
 
 ## 6. Model artefacts
 
 - Never commit checkpoints. Store them outside Git and reference them by version.
 - Every artefact records: training run ID, dataset version, code commit, metric
   summary, and input/output contract.
+- Checkpoints carry a `model_arch` key (`cardd_hybrid` / `cardd_unet`); the
+  inference engine dispatches on it and a mismatch is a loud `ModelVersionError`
+  (ADR 0010). Never guess the architecture of a checkpoint.
 - Loading a model from an unverified source is a security risk; see `SECURITY.md`.
 
 ## 7. Evaluation
@@ -83,16 +87,29 @@ the dataset documentation, and in any figure that uses it.
 - GPU training never runs in CI.
 - The metric implementation is shared between the baselines and the proposed
   model — one code path, so a metric bug affects all arms equally.
-- Report interval coverage and width for cost estimation, not only point error.
+- Report the honest-segmentation headline metrics, not point error alone:
+  mean IoU, Dice, and pixel accuracy per class, plus a small-damage slice
+  (e.g. the train-p25 pixel criterion) where under-segmentation shows first —
+  and always alongside the underfit-baseline context when presenting results.
+- Confidence honesty is a first-class metric, not a footnote: report the
+  low-confidence flag rate and the separation of confidence over agreed vs
+  disagreed instances (RQ2) so "low confidence" claims remain falsifiable.
+- Metrics must not leak through overlap: keep the argmax decode identical
+  between loss and evaluation (ADR 0008) and note the overlap limitation on
+  stacked CarDD masks rather than papering over it.
+- Every reported evaluation records the reproducibility fields: experiment ID,
+  dataset version, split policy, seed, commit hash, hyperparameters, and the
+  run record (`registry.json`).
 
 ## 8. Inference in production
 
 - Load the model once at startup, not per request.
 - Validate input images at the boundary: type, size, dimensions.
-- Return the confidence and the interval alongside every prediction. A point
-  estimate with no uncertainty misrepresents what the system knows.
-- Fail loudly on a missing or version-mismatched artefact. Never fall back to a
-  hard-coded prediction.
+- Return the confidence and the low-confidence flag alongside every prediction.
+  A point estimate with no confidence signal misrepresents what the system knows
+  (RQ2 is a research requirement).
+- Fail loudly on a missing, version-mismatched, or arch-ambiguous artefact.
+  Never fall back to a hard-coded prediction.
 
 ## 9. Reproducibility
 

@@ -5,6 +5,11 @@
 > for the implemented system. This report is retained as a historical record of
 > the baseline audit and its recommended order.
 >
+> Further superseded (2026-09-21): ADR 0011 removed cost/repair/questionnaire
+> and defined the photo-first flow; ADR 0010 introduced the `CarddHybrid`
+> model and arch-tagged checkpoints. Where this report still says "add a
+> repair/cost interface" it describes a plan that was later cut.
+>
 > Original banner:
 > **audit deliverable (Phase A), 2026-09-08.** Repository-wide audit of the
 > current research baseline against the complete-product brief. No application
@@ -28,8 +33,10 @@
   (full-split summary + montages), `ml/analysis/error_analysis.py` (case
   selection + overlays + `CLASS_COLORS`).
 - **Experiment provenance:** `ml/experiments/registry.json` + per-run
-  `run_record.json`; `cardd_baseline_ce` is the current inference candidate
-  (base 64, CE, best val mIoU 0.0475 — **underfit baseline, not production**).
+  `run_record.json`; `cardd_baseline_ce` (base 64, CE, best val mIoU 0.0475) was
+  the Phase 8 inference candidate — **underfit baseline, not production**. The
+  demo default contract later moved to the hybrid run `cardd_hybrid_ce` (ADR
+  0010).
 - **Quality gates:** ruff/mypy(strict)/pytest (22 tests) green; dataset-gated
   tests skip cleanly without data.
 - **Runtime:** all backend/MLL packages already installed in the `ai` conda env:
@@ -47,7 +54,7 @@
 - No image-quality validation stage (blur/dark/glare/framing/visibility).
 - No damage-feature extraction service (instances, confidence, area ratio,
   position, shape — only evaluation-harness code exists, not a production path).
-- No repair/replace interface; no cost service (honest `DATA_UNAVAILABLE` state).
+- No assistant service, no capture-quality gate, no chat endpoint.
 - No typed `InspectionContext` (incident/vehicle/location/vision/provenance).
 - No storage layer, session lifecycle, cleanup service, or training-data consent
   workflow.
@@ -60,7 +67,8 @@
 - `CarddUNet` + `best_checkpoint.pt` (`cardd_baseline_ce`) = the real inference
   engine (load pattern proven in `evaluate_run.py` / `error_analysis.py`:
   `torch.load(..., weights_only=False)` → `Model(..., base=ckpt["base"])`
-  → `load_state_dict(ckpt["model_state"])`).
+  → `load_state_dict(ckpt["model_state"])`; the loader later became
+  arch-dispatching on the `model_arch` key — ADR 0010).
 - `CLASS_COLORS`, `overlay`/`blend`/`edge_of`/`montage` from
   `ml/evaluation/evaluate_run.py` + `ml/analysis/error_analysis.py` for the
   segmentation overlay endpoint (to be moved under `ml/inference`).
@@ -87,30 +95,35 @@
 3. Image-quality validator (blur/dark/glare/framing/visibility → VALID /
    TOO_BLURRY / TOO_DARK / EXCESSIVE_GLARE / WRONG_ANGLE /
    DAMAGE_NOT_VISIBLE / INSUFFICIENT_CONTEXT).
-4. LangGraph workflow (nodes = orchestration only, no ML inside) + Groq
-   conversational service (backend-only key).
-5. Repair-action interface (REPAIR / REPLACE / MANUAL_REVIEW) backed by a
-   clearly-labelled "preliminary demonstration rule", swappable for the learned
-   model later.
-6. Cost interface returning `cost_status=DATA_UNAVAILABLE` with the mandated
-   explanation; P10/P50/P90 structure reserved; synthetic demo values only
-   behind an explicit `ALLOW_SYNTHETIC_ESTIMATE` flag, always labelled
-   "DEMO / SYNTHETIC ESTIMATE — NOT A REAL QUOTE".
+4. LangGraph workflow (nodes = orchestration only, no ML inside) + assistant
+   service seam (`AssistantService`; LangChain `ChatGroq` when a key is set,
+   offline `StubAssistant` otherwise — key backend-only).
+5. Capture-quality gate + photo-first flow, as later implemented under ADR 0011:
+   `POST /inspection/session` → upload → `analyze` (reject → `200
+   QUALITY_FAILED` with assistant retake guidance; accept → segmentation +
+   evidence) → optional consent → `POST /chat`. No repair-action or cost
+   interface was built; those plans were cut by ADR 0011.
+6. Hybrid segmentation model `CarddHybrid` as the demo checkpoint contract
+   (`ml/experiments/cardd_hybrid_ce/best_checkpoint.pt`, ADR 0010): the engine
+   dispatches on the checkpoint's `model_arch` key. The previously-planned
+   P10/P50/P90 cost structure was removed (ADR 0011) and never built.
 7. Storage layer (`ImageStore`, `SessionStore`, `TrainingSampleStore`,
    `ConsentStore`) + ephemeral session cleanup + optional training consent.
-8. `apps/web/` — Next.js frontend (cinematic intro, chat, context summary,
-   photo guidance, upload/camera, validation UX, analysis stages, results,
-   explanation, consent, completion); responsive mobile/tablet/desktop.
+8. `apps/web/` — Next.js frontend (cinematic intro, chat composer with photo
+   attachment, validation UX, inline analysis results, consent,
+   completion); responsive mobile/tablet/desktop.
 9. Playwright E2E tests + CI workflow (`ci.yml`).
 10. `docs/architecture/overview.md` rewrite to reflect the real implementation.
 
 ## 5. What should NOT be added
 
-- **No second segmentation model / no "silent replacement"** of the current U-Net
-  as inference engine; future better checkpoints drop into the same interface.
-- **No cost fabrication, no fake masks/confidences/severity** — the model is the
-  only source of vision evidence; severity is intermediate and may be reported
-  as "not currently reliable".
+- **No "silent replacement"** of the current U-Net as inference engine. When the
+  hybrid was added it became arch-tagged (`model_arch`) and the engine dispatches
+  on that key (ADR 0010), so future better checkpoints drop into the same
+  interface without rewrites.
+- **No cost fabrication, no fake masks/confidences** — the model is the only
+  source of vision evidence; severity is absent in the photo-first scope and
+  cost/repair are out of scope (ADR 0011).
 - **No auto-retraining from user uploads** — collected data waits for dataset
   review, label validation, versioning, explicit offline training.
 - **No part-normalized area** (`damage_pixels/part_pixels`) — banned by ADR 0005
@@ -152,17 +165,18 @@
 ## 8. Frontend architecture
 
 - `apps/web` — Next.js App Router, React 19, TypeScript strict, Tailwind.
-- Single journey, not unrelated pages: cinematic landing → agent chat → context
-  summary → photo guidance → upload/camera → validation → analysis stages →
-  results (+overlay) → explanation → optional consent → completion.
+- Single journey, not unrelated pages: cinematic landing → photo-first chat
+  composer → photo upload → capture-quality gate → inline analysis (overlay +
+  class chips + area ratio + confidence) → optional consent → follow-up chat.
 - Scroll-driven cinematic: one pinned section over the four clips; scroll
   progress (0→1) maps to total timeline 0→30.42 s (video 1: 0–10 s, video 2:
   10–18 s, video 3: 18–22.4 s, video 4: 22.4–30.4 s), seeking each clip's
   `currentTime`; text overlays tied to progress; smooth hand-off to the agent
   ("Talk to AutoInspect-X" / "Start Inspection").
-- Results clarity: four labelled blocks (WHAT YOU TOLD US / WHAT THE MODEL FOUND
-  / WHAT WE ESTIMATE / WHAT WE RECOMMEND); low-confidence banner; cost
-  unavailable state; bottom-sheet modals on mobile (rejection UX).
+- Results clarity: predicted-mask overlay + class chips + area ratio +
+  confidence with honesty annotations (per ADR 0011, not the old four labelled
+  blocks); low-confidence banner; no cost/quote state exists; bottom-sheet
+  modals on mobile (rejection UX).
 - Performance: lazy-mount cinematic, `preload="metadata"`, code-split views,
   responsive from ~375 px up; reduced-motion fallback.
 
@@ -171,24 +185,19 @@
 `apps/api` with the mandated layering (router → application service → domain →
 infrastructure):
 
-- `api/` — thin FastAPI routers (chat, inspection CRUD, image upload,
-  validate-image, analyze, consent, feedback).
-- `agent/` — LangGraph StateGraph (START → understand_request →
-  collect_incident → collect_damage_location → collect_vehicle →
-  collect_repair_location → collect_insurance_if_needed → check_context_ready →
-  photo_guidance → receive_photo → validate_image [FAIL loops to photo_guidance]
-  → damage_analysis → feature_extraction → compare_user_vs_model →
-  downstream_prediction → cost_availability → result_validation →
-  final_explanation → training_consent → session_cleanup → END) + Groq
-  conversation/extraction/explanation service (key server-side only).
+- `routers/` — thin FastAPI routers (inspection session/upload/analyze/consent,
+  chat). The flow is photo-first (ADR 0011); no validate-image, repair, cost,
+  or feedback router exists.
+- `agent/` — `AssistantService` with `damages_explanation` / `retake_guidance`
+  / `chat_reply`; production impl `LangChainGroqAssistant` wraps LangChain
+  `ChatGroq`, and `build_assistant` selects the offline `StubAssistant` when no
+  key is set (server-side only). `graph.py` is a minimal LangGraph
+  (`START → llm_turn → END`) that never waits on questionnaire fields.
 - `inspection/` — typed `InspectionContext` + provenance (USER / MODEL / DERIVED
-  / INFERRED / SYSTEM), user-vs-model comparison (AGREEMENT / PARTIAL_AGREEMENT
-  / DISAGREEMENT), photo-guidance templates per reported panel.
-- `vision/` — image-quality validation + overlay/feature presentation (calls
+  / INFERRED / SYSTEM) and consent bookkeeping; no user-vs-model comparison and
+  no per-panel questionnaire templates (removed by ADR 0011).
+- `vision/` — capture-quality validation + overlay/feature presentation (calls
   `ml/inference` only).
-- `cost/` — `CostEstimator` interface; real path = quantile model later; current
-  path returns `DATA_UNAVAILABLE` (+ optional behind-flag synthetic demo).
-- `repair/` — `RepairEstimator` interface with labelled demonstration rule.
 - `storage/` — interface implementations (fs + sqlite); cleanup service.
 - `shared/` — pydantic schemas/contracts shared with the frontend.
 
@@ -205,9 +214,12 @@ infrastructure):
   instance count, `needs_review` when confidence is low.
 - Visualization: overlay PNG/JPEG endpoint reusing the existing overlay helpers
   (moved under `ml/inference`), `CLASS_COLORS` kept as single source.
-- The underfit `cardd_baseline_ce` artifact is used **for demonstration** with
-  confidence + low-confidence mode; a future stronger checkpoint replaces it via
-  the same `MODEL_PATH`-resolved loader — no app rewrite.
+- The demo checkpoint contract is `ml/experiments/cardd_hybrid_ce/
+  best_checkpoint.pt` (ADR 0010; to be trained). The engine reads `base` and
+  `model_arch` straight from the artefact and dispatches on the arch key; the
+  underfit `cardd_baseline_ce` remains the historical demonstration-grade
+  fallback (val mIoU ≈ 0.0475) until a real hybrid run lands — same
+  `MODEL_PATH`-resolved loader, no app rewrite.
 
 ## 11. Security risks
 
@@ -225,11 +237,12 @@ infrastructure):
 
 - Images may contain number plates/faces → EXIF strip, short retention, deletion
   at session end; persistence only under explicit consent.
-- No exact residential addresses; repair-city-level context only.
-- Conversation is used to drive the inspection and generate explanations; only a
-  minimal, consented `TrainingSample` (image + labels + context + provenance +
-  consent + dataset version) may persist — never full chat history, insurance
-  details, or personal identifiers.
+- No location/address fields exist in the photo-first scope; only the uploaded
+  photo and its derived evidence are handled.
+- Conversation is used to answer follow-ups grounded in the stored evidence; only
+  a minimal, consented `TrainingSample` (image + labels + context + provenance +
+  consent + dataset version) may persist — never full chat history or personal
+  identifiers.
 - Ephemeral vs persistent lifetimes kept distinct so session cleanup can never
   delete a consented training record; consent is always optional and labelled
   so.
@@ -239,16 +252,16 @@ infrastructure):
 - **Underfit baseline** (val mIoU 0.0475) must never be presented as production
   performance; product uses confidence + low-confidence warnings + honest
   explanations. This is demonstration-grade inference, documented as such.
-- **No cost labels** → the cost head always returns `DATA_UNAVAILABLE` (or
-  labelled synthetic demo); nothing may pass as a real quote.
+- **No cost labels** → repair-cost prediction (and its synthetic-labelled demo)
+  was removed by ADR 0011; nothing cost-like exists to pass as a real quote.
 - **No part masks** → area stays image-normalized; never cm²; no severity
-  overclaim.
+  overclaim (ADR 0005).
 - `ml/experiments/registry.json` lacks a STATUS/superseded field (superseded
   runs are documented only in ADR prose) — service should ignore superseded
   runs; add a field when the registry is next touched.
 - The conversational/product layer must not distort the research methodology
-  (two-track rule): research = segmentation → features → fusion → downstream
-  comparison; product = cinematic UI → conversation → photo flow → inference →
+  (two-track rule): research = segmentation → features → confidence-honesty
+  comparison (RQ1/RQ2); product = cinematic UI → photo-first chat → inference →
   results → consent.
 
 ## 14. Recommended implementation order
@@ -270,8 +283,13 @@ review + TASKS.md/MEMORY.md updates:
 7. **G — LangGraph workflow**: the mandated graph with loops; pydantic state.
 8. **H — Groq integration**: conversation, extraction, explanation, photo
    instructions (server-side).
-9. **I — Repair-action interface**: labelled demonstration rule.
-10. **J — Cost interface**: `DATA_UNAVAILABLE` path (+ optional flagged demo).
+9. **I — Assistant service**: `AssistantService` seam; LangChain `ChatGroq`
+   production impl, offline `StubAssistant`, `build_assistant` selection. (The
+   originally-planned repair-action interface was cut by ADR 0011.)
+10. **J — Photo-first evidence + hybrid model**: quality gate → segmentation →
+    evidence payload; `CarddHybrid` default checkpoint contract with arch-tagged
+    checkpoints. (The originally-planned cost interface and P10/P50/P90
+    structure were cut by ADR 0011.)
 11. **K — Training-data consent/storage**: consent flow + training sample write.
 12. **L — Frontend foundation**: Next.js scaffold, design system, responsive
     shell.
@@ -281,8 +299,8 @@ review + TASKS.md/MEMORY.md updates:
 15. **O — Cinematic video experience**: scroll-driven sequence over the four
     clips (mapping in §8).
 16. **P — Full end-to-end integration**.
-17. **Q — Playwright testing**: desktop/tablet/mobile E2E incl. poor image,
-    retry, disagreement, low confidence, unavailable cost, Groq/API failure.
+17. **Q — Playwright testing**: desktop/tablet/mobile E2E incl. poor image (with
+    retake guidance), low confidence, assistant (Groq/stub) and API failure.
 18. **R — Cleanup + documentation**: dead-code sweep, `overview.md` rewrite,
     this report superseded, `ci.yml` created, TASKS/MEMORY/LOGIC updates.
 

@@ -1,7 +1,7 @@
 [project]
 name = "autoinspect-x"
 version = "0.0.0"
-description = "Multimodal deep learning for vehicle damage segmentation and uncertainty-aware repair cost estimation"
+description = "Deep learning for honest, evidence-labelled vehicle damage segmentation and inspection guidance"
 requires-python = ">=3.11"
 dependencies = []
 

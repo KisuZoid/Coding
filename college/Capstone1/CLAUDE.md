@@ -11,26 +11,24 @@ engineering rules.
 
 ## 1. Project summary
 
-AutoInspect-X estimates vehicle repair cost and repair action from photographs,
-using damage segmentation combined with vehicle metadata.
+AutoInspect-X is a photo-first vehicle damage inspection: it turns one
+photograph into a pixel-level damage mask and an honest, conversational
+explanation. Repair cost and repair action prediction are out of scope
+(ADR 0011).
 
 ```
-Vehicle image(s)
+Photo (attached in the chat composer)
       ↓
-Damage / vehicle-part segmentation
+Capture-quality gate (blur / dark / glare / framing / visibility)
+      ↓  on rejection → 200 QUALITY_FAILED + assistant retake guidance
+Damage segmentation (CarddHybrid by default; legacy CarddUNet) — 7-channel argmax
       ↓
-Damage representation (type, area ratio, location, part, confidence, geometry)
-      +  Vehicle metadata (make, model, year/age, region)
+Evidence payload (classes, image-denominator area ratios, confidence,
+      low-confidence flag, quality, model metadata) + predicted-mask overlay
       ↓
-Multimodal fusion
-      ↓
-  ┌──────────────────────────┬─────────────────────────────┐
-  │ Repair action prediction │ Cost distribution / range   │
-  │ repair / replace /       │ lower / median / upper      │
-  │ manual inspection        │ quantile estimates          │
-  └──────────────────────────┴─────────────────────────────┘
-      ↓
-Explainable report
+Assistant chat (LangChain ChatGroq when a key is set; offline stub otherwise)
+      ↓  optional consent
+Follow-up questions
 ```
 
 Hidden-damage risk prediction is **optional**, and only in scope if real
@@ -146,7 +144,7 @@ AutoInspect-X/
 ├── ml/
 │   ├── datasets/        # CarDD audit + typed data adapter (cardd_adapter.py, cardd_audit.py)
 │   │   └── reports/     # cardd_audit.json (experiment documentation)
-│   ├── models/          # CarddUNet (smoke U-Net, ADR 0006)
+│   ├── models/          # CarddUNet (smoke U-Net, ADR 0006) + CarddHybrid (CNN+transformer, ADR 0010)
 │   ├── training/        # PyTorch dataset adapter, smoke test, smoke + real trainers, shared loss
 │   ├── evaluation/      # segment. metric harness (metrics.py: IoU/Dice, Phase 4)
 │   └── experiments/     # run records + checkpoints + registry.json (git-ignored)
@@ -172,14 +170,14 @@ Dataset roots (`datasets/`) are git-ignored; commit `ml/datasets/reports/`
 documentation instead. Key ADRs: 0003 (training/inference separation),
 0004 (ground-truth labelling policy), 0005 (CarDD has no part masks →
 only image-denominator area ratio is derivable), 0006 (segmentation framework =
-raw PyTorch small U-Net).
+raw PyTorch small U-Net), 0010 (CarddHybrid hybrid model + arch-tagged
+checkpoints), 0011 (photo-first scope; cost/repair/questionnaire removed).
 
-Planned, and deliberately **not** created yet — create each only when a task
-justifies it:
+`apps/web/`, `apps/api/`, and `ml/inference/` exist today (photo-first demo,
+ADR 0011). Still planned, deliberately **not** created yet — create each only
+when a task justifies it:
 
 ```
-apps/web/      apps/api/
-ml/inference/
 packages/shared/
 scripts/       automation/n8n/
 ```
@@ -206,7 +204,8 @@ No direct cross-boundary imports.
 - Business logic never lives in route handlers.
 - Do not create ORM models, repositories, services, or endpoints before their
   responsibilities are known.
-- Future logical modules: inspections, vehicles, damages, estimates, reports, models.
+- Future logical modules: inspections, damages, reports, models. No
+  repair/cost module will be added — those are out of scope (ADR 0011).
 
 ## 7. Frontend rules
 
@@ -216,10 +215,11 @@ No direct cross-boundary imports.
 - Avoid: random gradients, heavy glassmorphism, decorative cards with no semantic
   purpose, emoji as interface decoration, mixed icon libraries, over-animation,
   generic template-dashboard aesthetics.
-- The interface must clearly separate an **AI estimate / decision support** from a
-  **final professional workshop quotation**.
-- Planned screens: Dashboard, Inspection Upload, Inspection Result, Damage
-  Visualization, Repair Estimate, Inspection History, Report, Settings.
+- The interface must clearly separate the model's **predicted mask** (a MODEL
+  PREDICTION, preliminary when `low_confidence`) from verified damage extent.
+  Repair cost, repair action, and workshop quotes never appear in the UI.
+- Planned screens: the photo-first chat demo plus Inspection Upload, Inspection
+  Result, Damage Visualization, Inspection History, Report, Settings.
 
 ## 8. ML rules
 

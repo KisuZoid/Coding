@@ -9,10 +9,13 @@ tooling and MCP reference, and `init.md`, which holds the session start protocol
 ## 1. Before doing anything
 
 1. Read `init.md`, `CLAUDE.md`, `MEMORY.md`, `TASKS.md`, and `LOGIC.md`.
-2. Read the research document (`AutoInspect-X_Research_Report_Corrected.md`)
+2. Read the ADRs before touching anything flow- or model-facing: `0011` (photo-first
+   scope — cost/repair/questionnaire removed) and `0010` (CarddHybrid hybrid model,
+   arch-tagged checkpoints).
+3. Read the research document (`AutoInspect-X_Research_Report_Corrected.md`)
    before touching anything research-facing. If it is absent, say so; do not
    invent its contents.
-3. Inspect the repository and `git status` before proposing changes.
+4. Inspect the repository and `git status` before proposing changes.
 
 ## 2. Research integrity
 
@@ -41,6 +44,8 @@ These categories must remain distinct in code, data, documentation, and UI:
 Specifically:
 
 - A rule-generated cost table is **not** real repair-cost ground truth.
+  Repair-cost prediction was removed from scope (ADR 0011); restore any
+  cost-like field only via a new ADR.
 - Synthetic hidden-damage labels are **not** validated hidden-damage evidence.
 - Do not claim true physical damage area in cm² from an uncontrolled photograph
   unless a geometric or calibration method justifies it. A normalized
@@ -72,8 +77,9 @@ Full detail in `CLAUDE.md` §11.
 ## 6. Boundaries
 
 Do not create application functionality, database schemas, training pipelines,
-or the cost-estimation engine until a task explicitly asks for them. Structure
-first; features only when specified.
+or re-introduce cost/repair prediction (ADR 0011) until a task explicitly asks
+for them. Structure first; features only when specified. The photo-first flow
+and the hybrid segmentation model are the current contract — preserve it.
 
 ## 7. Finishing a session
 

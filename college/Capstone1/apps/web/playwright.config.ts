@@ -3,6 +3,13 @@ import { defineConfig, devices } from "@playwright/test";
 const port = 3000;
 const baseURL = `http://localhost:${port}`;
 
+// Hermetic by default: the backend webServer starts its OWN key-blanked
+// StubAssistant-backed API on :8000 and never silently reuses a running one,
+// so browser tests can't accidentally hit a live Groq server. To deliberately
+// run against an already-running backend (e.g. the fixed dev API), set
+// REUSE_BACKEND=1 and optionally BACKEND_URL / BACKEND_CMD.
+const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8000";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -32,15 +39,16 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // Backend on :8000 (ai conda env). With the prod checkpoints removed the
-      // suite should still pass for every test outside the real-engine happy
-      // path; set BACKEND_CMD to override for CI.
+      // Backend on :8000 (ai conda env). The Groq key is blanked so the suite
+      // runs hermetic against the offline StubAssistant (same rule as the
+      // pytest conftest). Set BACKEND_CMD / BACKEND_URL to override for CI or a
+      // live test, and REUSE_BACKEND=1 to target an already-running API.
       command:
         process.env.BACKEND_CMD ??
-        "bash -lc 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate ai && exec uvicorn apps.api.main:app --port 8000 --log-level warning'",
+        "bash -lc 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate ai && exec env GROQ_AUTO_INSPECT_API_KEY= uvicorn apps.api.main:app --port 8000 --log-level warning'",
       cwd: "../..",
-      url: "http://localhost:8000/health",
-      reuseExistingServer: true,
+      url: `${backendUrl}/health`,
+      reuseExistingServer: process.env.REUSE_BACKEND === "1",
       timeout: 90_000,
     },
     {
