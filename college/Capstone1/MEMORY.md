@@ -1026,3 +1026,40 @@ format ✓ mypy strict ✓ (56 files), pytest **130 passed**, frontend lint/tsc/
 tree (now incl. Task 21 changes) still uncommitted — the supervisor may want a
 commit next. Recommend a manual restart of the `--reload` dev server so
 `.env`-only values (`GROQ_MODEL`, `MODEL_PATH`, `MODEL_VERSION`) are picked up.
+
+---
+## 2026-09-22 — Chat/inspection UI refinish (full-screen workspace)
+
+Purely frontend; NO backend/model/LLM change. `DemoJourney` is now a
+`h-dvh` flex app shell (no page scroll, one conversation scroll region). Header
+brand lockup wraps a `<Link href="/">` (clickable, aria-label, focus ring);
+right side has a subtle `● API online` status + proper "New inspection" reset
+(works: clears messages to empty state). ChatPanel rewritten: user right-aligned
+amber bubble (class `bg-amber-400` kept — e2e depends on it), assistant text
+left-aligned with NO card. Analysis stays in-chat as a "MODEL FINDING" block
+(image + Detected damage chips + Inspection details rows + low-confidence note);
+quality rejects render bullets + in-chat **Retake photo** button that reopens the
+commodity picker. New `ChatMessage` fields `mean_confidence` /
+`damage_fraction` / `quality_reasons` are already on the API's `AnalyzeResponse`
+— frontend-only passthrough, no contract change. Composer/reponsible states:
+attachment thumb + "Photo attached — ready to analyze", "Analyzing the submitted
+vehicle image…" loading, empty-state with Attach photo. Auto-scroll only jumps
+when the user is near the bottom (respects reading history).
+
+**Watch-outs for agents:**
+- e2e depends on: `div.bg-amber-400` (user bubble), placeholder "Ask or attach a
+  photo of the damage", button label "Send", alt "Attached photo preview",
+  heading "Help improve the model?" + "Consent saved", link "Back to the intro",
+  alt "Model overlay of the detected damage", `[data-message-role="user|assistant"]`.
+  `composer.spec.ts` now targets the new assistant marker, not `bg-slate-800`.
+- Playwright is run with `REUSE_BACKEND=1` here because the supervisor's live
+  uvicorn holds :8000; the hermetic default can't bind that port while it runs.
+- Sessions: this task moved the API-offline / error notices and the consent +
+  disclaimer + intro link INTO the chat conversation — no separate result panels.
+
+**Verification:** lint/typecheck/build clean; Playwright **34 passed / 8 intended
+skip** (live backend); layout QA passed at 1280/768/390 wide. Screenshots for human
+review at /tmp/opencode/ui-*.png (assistant cannot render images).
+
+**Open (unchanged):** full tree uncommitted; A2/A4 + RQ2 research steps; CI local
+run unverified.

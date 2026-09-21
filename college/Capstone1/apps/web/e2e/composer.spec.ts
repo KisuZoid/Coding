@@ -13,8 +13,8 @@ test.describe("demo composer", () => {
     await openDemo(page);
 
     await sendTurn(page, "Hello, what can you tell me about damage?");
-    await expect(page.locator("div.bg-amber-400").first()).toBeVisible();
-    await expect(page.locator("div.bg-slate-800").first()).toBeVisible();
+    await expect(page.locator('div[data-message-role="user"]').first()).toBeVisible();
+    await expect(page.locator('div[data-message-role="assistant"]').first()).toBeVisible();
   });
 
   test("attach preview appears and can be removed without sending", async ({ page }) => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import BrandMark from "@/components/demo/BrandMark";
 import ChatPanel from "@/components/demo/ChatPanel";
 import ConsentBanner from "@/components/demo/ConsentBanner";
 import {
@@ -94,8 +95,15 @@ export default function DemoJourney() {
             quality_status: res.quality_status,
             classes_present: res.classes_present,
             low_confidence: res.low_confidence,
+            mean_confidence: res.mean_confidence,
+            damage_fraction: res.damage_fraction,
           }
-        : { role: "assistant", content: res.assistant_message, quality_status: res.quality_status };
+        : {
+            role: "assistant",
+            content: res.assistant_message,
+            quality_status: res.quality_status,
+            quality_reasons: res.quality_reasons,
+          };
       setMessages((m) => [...m, assistant]);
       setInspectionDone(res.status === "OK");
     } catch (e) {
@@ -161,87 +169,96 @@ export default function DemoJourney() {
     }
   };
 
+  const footer = inspectionDone ? (
+    <>
+      <div className="mt-4 w-full">
+        <ConsentBanner
+          visible={consented === null}
+          busy={busy}
+          onChoice={(g) => void handleConsent(g)}
+        />
+        {consentNote && (
+          <p className="mt-2 px-1 text-xs leading-relaxed text-slate-500">{consentNote}</p>
+        )}
+        {consented === "GRANTED" && (
+          <section className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+            <h3 className="text-sm font-semibold text-emerald-200">Consent saved</h3>
+            <p className="mt-1 text-xs leading-relaxed text-slate-300">{consentNote}</p>
+          </section>
+        )}
+      </div>
+      <p className="mt-5 px-1 text-center text-[11px] leading-relaxed text-slate-500">
+        Demonstration build. Findings are machine predictions with explicit labels
+        — never a claim of verified damage extent.
+      </p>
+      <Link
+        href="/"
+        className="mt-2 block py-2 text-center text-xs font-medium text-amber-300/90 hover:text-amber-200"
+      >
+        Back to the intro
+      </Link>
+    </>
+  ) : null;
+
+  const statusLabel = connection === true ? "API online" : connection === false ? "API offline" : "Connecting";
+  const statusColor =
+    connection === true
+      ? "text-emerald-300/90"
+      : connection === false
+        ? "text-rose-300/90"
+        : "text-slate-400";
+  const statusDot =
+    connection === true ? "bg-emerald-400" : connection === false ? "bg-rose-400" : "bg-slate-500";
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-5 py-4">
-          <span className="text-sm font-semibold tracking-widest uppercase text-slate-100">
-            AutoInspect<span className="text-amber-400">-X</span>
-          </span>
-          <div className="flex items-center gap-4">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                connection === true
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : connection === false
-                    ? "bg-rose-500/10 text-rose-300"
-                    : "bg-slate-800 text-slate-400"
-              }`}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              {connection === true ? "API online" : connection === false ? "API offline" : "Connecting"}
+    <div data-shell className="flex h-dvh min-h-dvh flex-col overflow-hidden bg-background text-foreground">
+      <header className="relative z-40 flex-none border-b border-white/[0.06] bg-[#0d1218]/85">
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:h-16 sm:px-6">
+          <Link
+            href="/"
+            aria-label="AutoInspect-X home"
+            className="group inline-flex items-center gap-2.5 rounded-lg px-1 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+          >
+            <BrandMark className="h-6 w-6 text-amber-400 transition-transform group-hover:scale-105 sm:h-7 sm:w-7" />
+            <span className="text-sm font-semibold tracking-widest text-slate-100 uppercase transition-colors group-hover:text-white">
+              AutoInspect<span className="text-amber-400">-X</span>
+            </span>
+          </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span role="status" aria-label={statusLabel} className={`inline-flex items-center gap-1.5 text-xs ${statusColor}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-hidden />
+              {statusLabel}
             </span>
             <button
               type="button"
               onClick={() => void resetAll()}
               disabled={busy}
-              className="text-xs font-medium text-slate-400 transition hover:text-slate-100 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
             >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+              </svg>
               New inspection
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-5 py-8">
-        {connection === false && (
-          <div className="mb-6 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
-            The AutoInspect-X API is not reachable. Start the backend
-            (uvicorn apps.api.main:app in the ai conda environment) and reload this page.
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-200">
-            {error}
-          </div>
-        )}
-
-        <div className="h-[62vh] min-h-[480px]">
-          <ChatPanel messages={messages} busy={busy} onSend={handleSend} />
-        </div>
-
-        {inspectionDone && (
-          <div className="mt-5 space-y-4">
-            <ConsentBanner
-              visible={consented === null}
-              busy={busy}
-              onChoice={(g) => void handleConsent(g)}
-            />
-            {consentNote && (
-              <p className="px-1 text-xs leading-relaxed text-slate-500">{consentNote}</p>
-            )}
-            {consented === "GRANTED" && (
-              <section className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 p-5">
-                <h3 className="text-sm font-semibold text-emerald-200">Consent saved</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  {consentNote}
-                </p>
-              </section>
-            )}
-            <p className="px-1 pb-6 text-center text-[11px] leading-relaxed text-slate-500">
-              Demonstration build. Findings are machine predictions with explicit
-              labels — never a claim of verified damage extent.
-            </p>
-            <Link
-              href="/"
-              className="mt-2 inline-block text-center text-sm font-medium text-amber-300 hover:text-amber-200"
-            >
-              Back to the intro
-            </Link>
-          </div>
-        )}
-      </main>
+      <ChatPanel
+        messages={messages}
+        busy={busy}
+        onSend={handleSend}
+        notice={connection === false ? null : error}
+        apiOffline={connection === false}
+        footer={footer}
+      />
     </div>
   );
 }
