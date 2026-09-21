@@ -37,7 +37,9 @@ test.describe("inspection journey", () => {
     await page.getByRole("button", { name: "Yes, keep it for training" }).click();
     await expect(page.getByRole("heading", { name: "Consent saved" })).toBeVisible();
 
-    await expect(page.getByRole("link", { name: "Back to the intro" })).toBeVisible();
+    // The removed bottom "Back to the intro" link stays gone (the header logo
+    // is the single way back to the intro).
+    await expect(page.getByRole("link", { name: "Back to the intro" })).toHaveCount(0);
   });
 
   test("poor-quality photo is rejected with retake guidance, then succeeds", async ({ page }, testInfo) => {
