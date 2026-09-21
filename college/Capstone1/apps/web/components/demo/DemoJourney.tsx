@@ -191,12 +191,6 @@ export default function DemoJourney() {
         Demonstration build. Findings are machine predictions with explicit labels
         — never a claim of verified damage extent.
       </p>
-      <Link
-        href="/"
-        className="mt-2 block py-2 text-center text-xs font-medium text-amber-300/90 hover:text-amber-200"
-      >
-        Back to the intro
-      </Link>
     </>
   ) : null;
 

@@ -25,11 +25,19 @@ const QUALITY_REASONS_FALLBACK = [
   "better lighting",
 ];
 
+// Shared readable cap for both user and assistant message content. Matches the
+// conversation column max-width so each message (text and analysis block)
+// aligns to one consistent edge; rows are full-width wrappers that align right
+// (user) / left (assistant) inside the shell.
+const MESSAGE_MAX_WIDTH = "max-w-[46rem]";
+
 function Message({ message, onRetake }: { message: ChatMessage; onRetake: () => void }) {
   if (message.role === "user") {
     return (
       <div data-message-role="user" className="msg-in flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-amber-400 px-4 py-2.5 text-sm leading-relaxed text-black sm:max-w-[75%]">
+        <div
+          className={`${MESSAGE_MAX_WIDTH} min-w-0 rounded-2xl rounded-br-md bg-amber-400 px-4 py-2.5 text-sm leading-relaxed text-black`}
+        >
           {message.preview && (
             <img
               src={message.preview}
@@ -45,7 +53,9 @@ function Message({ message, onRetake }: { message: ChatMessage; onRetake: () => 
 
   return (
     <div data-message-role="assistant" className="msg-in flex justify-start">
-      <div className="w-full max-w-full">
+      <div
+        className={`${MESSAGE_MAX_WIDTH} w-full min-w-0 rounded-2xl bg-blue-900/70 px-4 py-3`}
+      >
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
           {message.content}
         </p>
@@ -309,9 +319,11 @@ export default function ChatPanel({ messages, busy, onSend, footer, notice, apiO
           {empty ? (
             <EmptyState onAttach={openFilePicker} />
           ) : (
-            messages.map((m, i) => (
-              <Message key={i} message={m} onRetake={openFilePicker} />
-            ))
+            <div className="flex flex-col gap-5">
+              {messages.map((m, i) => (
+                <Message key={i} message={m} onRetake={openFilePicker} />
+              ))}
+            </div>
           )}
 
           {busy && messages.length > 0 && <Loading analyzing={analyzing} />}
