@@ -67,7 +67,7 @@ def _image_sampling_weight(
     if not classes_present:
         return 1.0
     w_max = max(foreground_weights.get(cid, 1.0) for cid in classes_present)
-    return min(3.0, 1.0 + 2.0 * (w_max - 1.0))
+    return max(1.0, min(3.0, 1.0 + 2.0 * (w_max - 1.0)))
 
 
 def compute_train_class_stats(data_root: Path | str, split: str = "train2017") -> TrainClassStats:
