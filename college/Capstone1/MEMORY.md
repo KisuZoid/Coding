@@ -1063,3 +1063,32 @@ review at /tmp/opencode/ui-*.png (assistant cannot render images).
 
 **Open (unchanged):** full tree uncommitted; A2/A4 + RQ2 research steps; CI local
 run unverified.
+
+
+## 2026-09-22 — 512×512 GPU gates green; hard data recorded
+
+**Change:** Verified both house GPU gates on the RTX 3050 (4 GB, torch 2.5.1+
+cu121, CUDA available) at 512×512 for the baseline and hybrid arches.
+
+**Reasoning:** The previous session left a style gate (mypy strict + ruff) to
+be made green. That left two *runtime* gates unproven: the 512×512 forward
+path and the EMA+AMP+deep-supervision train path. This session closed both.
+
+**Current logic / state after the change:**
+- mypy `--strict` `ml/`: **0 errors** over 30 files (the 11 strict errors fixed
+  with the house `cast(Tensor, ...)`/`cast(Sized, ...)` idiom + torchvision
+  `# type: ignore[import-untyped]`).
+- ruff check: clean; ruff format `--check`: 30 files formatted; pytest: green.
+- GPU smoke (house `train_smoke.py`): `device=cuda`, 512² forward + eval ran,
+  run record JSON written.
+- GPU tiny train: baseline `params=24.6M`, 3.2 s/epoch; hybrid
+  `params=27.9M`, **peak VRAM 1372 MB**, best val fg-mIoU 0.0013 — both fit
+  the 4 GB card with ~2.4 GB headroom.
+- Experiment registry now holds both smoke entries with filled metrics.
+- House gate to reuse (don't reinvent):
+  `python ml/training/train_smoke.py --data-root datasets/CarDD_COCO
+  --out-dir /tmp/out --step-limit 24` (bounded machinery smoke).
+
+**Open questions:** Full-scale training (2816/810, ≥60 epochs) and the type
+isolation of `torch.amp.GradScaler` are good next steps; VRAM/ms per model at
+full batch size still to measure during that run.

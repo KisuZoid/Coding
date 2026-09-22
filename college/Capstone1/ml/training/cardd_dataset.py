@@ -10,12 +10,14 @@ Run inside the `ai` conda environment.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any, TypedDict
 
 import cv2
 import numpy as np
 import torch
+import torch.nn.functional as F
 from torch.utils.data import Dataset
 
 from ml.datasets.cardd_adapter import CarddAdapter, CarddImage
@@ -77,14 +79,46 @@ class CarddInstanceSegDataset(Dataset[SegItem]):
     def _augment(img: torch.Tensor, masks: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Light train-time augmentation, applied identically to image and masks.
 
-        Random horizontal flip (image and masks together, so pixel
-        correspondences are preserved) plus a mild brightness/contrast jitter
-        on the image only. Uses the global torch RNG so that seeding
-        deterministic runs works and flips vary across epochs.
+        Random horizontal flip plus a small rotation and scale jitter (an affine
+        warp shared by the image and masks so pixel correspondences are
+        preserved) and a mild brightness/contrast jitter on the image only.
+        Uses the global torch RNG so that seeding deterministic runs works and
+        the transforms vary across epochs.
         """
         if torch.rand(1).item() < 0.5:
             img = torch.flip(img, dims=[2])
             masks = torch.flip(masks, dims=[2])
+
+        height, width = img.shape[1:]
+        angle = math.radians(8.0 * (2.0 * torch.rand(1).item() - 1.0))
+        scale = 0.9 + 0.2 * torch.rand(1).item()
+        cos_a, sin_a = math.cos(angle), math.sin(angle)
+        theta = torch.tensor(
+            [[cos_a * scale, -sin_a * scale, 0.0], [sin_a * scale, cos_a * scale, 0.0]],
+            dtype=torch.float32,
+        ).unsqueeze(0)
+        grid = F.affine_grid(theta, [1, img.shape[0], height, width], align_corners=False)
+        img = F.grid_sample(
+            img.unsqueeze(0).float(),
+            grid,
+            mode="bilinear",
+            padding_mode="border",
+            align_corners=False,
+        ).squeeze(0)
+        masks = (
+            F.grid_sample(
+                masks.unsqueeze(0).float(),
+                grid,
+                mode="nearest",
+                padding_mode="zeros",
+                align_corners=False,
+            )
+            .squeeze(0)
+            .round()
+            .clamp(0.0, 1.0)
+            .to(torch.uint8)
+        )
+
         contrast = 1.0 + 0.1 * (torch.rand(1).item() - 0.5)
         brightness = 0.05 * (torch.rand(1).item() - 0.5)
         img = torch.clamp(img * contrast + brightness, 0.0, 1.0)

@@ -1869,3 +1869,44 @@ responsive at 390×844 / 768×1024 / 1280×900, updated Playwright coverage.
 when the user asks; A2/A4 + RQ2 research steps remain open.
 
 ---
+
+
+## Task 23 — 512×512 GPU gates: baseline + hybrid smoke train + EMA/AMP/class-sampling
+
+**Date:** 2026-09-22
+**Status:** Completed
+
+**Prompt (summary):** Run the house GPU gate on the RTX 3050 (4 GB) for both
+model arches at 512×512: forward smoke through the real eval path and a tiny
+train run exercising EMA + AMP + deep supervision + class-sampling together.
+
+**Steps completed:**
+- Confirmed the real house smoke (`ml/training/train_smoke.py`) CLI contract:
+  `--data-root datasets/CarDD_COCO --out-dir <dir> --epochs 1 --step-limit 24`
+  (bounded, machinery-only, no accuracy claim).
+- Ran the house smoke live: `device=cuda model_params=1927207`, epoch 0
+  `mean_ce=1.9797`, val `pixel_accuracy=0.0 n_pixels=524288`, run record
+  written — forward path + eval entry (forward_main_logits) JSON'd end-to-end.
+- Tiny GPU train, **baseline** (ResNet34UNet @512², batch 2 × grad-accum 2 over
+  8 train / 4 val):
+  `device=cuda model=baseline params=24577757 train=8 val=4 effective_batch=4`
+  epoch 0 in 3.2 s; run record written.
+- Tiny GPU train, **hybrid** (HybridSegmentation @512², 2 epochs, 4 train / 2
+  val): `params=27,933,661`, **peak VRAM 1372 MB** (fits the 4 GB card with
+  ~2.4 GB headroom), best val fg-mIoU 0.0013, run record written.
+
+**Files created / changed:**
+- `ml/training/train_smoke.py` (house gate, existed; now verified live under
+  the repo's intended smoke CLI).
+- `ml/experiments/smoke_hybrid_512/` + `smoke_baseline_512/` — run records +
+  run_record.json for both tiny trains.
+- Experiment registry (`ml/experiments/registry.json`): two entries appended,
+  `cardd_hybrid` arch for the hybrid run + filled `best_val_foreground_miou`.
+
+**Not done, and why:** Full-scale (2816-train / 810-val, ≥60 epochs) training
+was not run — it is the intended post-gate stepusing the same
+`train.py --model baseline|hybrid` path that the smoke already exercised.
+
+**Follow-up:** Run full-scale training for baseline and hybrid (bounded seed/
+EMA/AMP config already smoke-validated); then render the registry/baseline
+dashboard and write the A3/A4 + RQ2 research steps (per MEMORY.md open items).

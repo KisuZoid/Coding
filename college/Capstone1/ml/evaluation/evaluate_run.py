@@ -28,7 +28,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -57,6 +57,8 @@ from ml.evaluation.small_damage import (  # noqa: E402
 )
 from ml.models.cardd_hybrid import CarddHybrid  # noqa: E402
 from ml.models.cardd_unet import CarddUNet  # noqa: E402
+from ml.models.hybrid_segmentation import HybridSegmentation  # noqa: E402
+from ml.models.resnet34_unet import ResNet34UNet  # noqa: E402
 from ml.training.cardd_dataset import (  # noqa: E402
     TARGET_SIZE,
     CarddInstanceSegDataset,
@@ -99,6 +101,18 @@ def instance_areas_by_image_id(data_root: Path, split: str) -> dict[int, list[fl
     return result
 
 
+def forward_main_logits(model: torch.nn.Module, images: torch.Tensor) -> torch.Tensor:
+    """Main-head logits from any model in the checkpoint contract.
+
+    The research models return ``(main, aux1, aux2)``; legacy models return a
+    single logit tensor. This normalizes the difference for evaluation.
+    """
+    out = model(images)
+    if isinstance(out, tuple | list):
+        return cast(torch.Tensor, out[0])
+    return cast(torch.Tensor, out)
+
+
 @torch.no_grad()
 def evaluate_split(
     loader: torch.utils.data.DataLoader[Any],
@@ -119,7 +133,7 @@ def evaluate_split(
         masks = batch["masks"]
         labels = batch["labels"]
         targets = aggregate_targets(masks, labels, num_classes).to(device)
-        logits = model(images).float()
+        logits = forward_main_logits(model, images).float()
         pred_classes = logits.argmax(dim=1)
         target_classes = targets.argmax(dim=1)
 
@@ -193,7 +207,7 @@ def write_examples(
         masks = batch["masks"]
         labels = batch["labels"]
         targets = aggregate_targets(masks, labels, num_classes).to(device)
-        logits = model(images).float()
+        logits = forward_main_logits(model, images).float()
         pred_classes = logits.argmax(dim=1).cpu()
         for i in range(images.shape[0]):
             if written >= num_examples:
@@ -283,8 +297,12 @@ def main() -> None:
     num_classes = max(probe.category_ids()) + 1
     arch = ckpt.get("model_arch") or "cardd_unet"
     model: torch.nn.Module
-    if arch == "cardd_hybrid":
+    if arch in ("resnet34_unet", "baseline"):
+        model = ResNet34UNet(num_classes=num_classes).to(device)
+    elif arch in ("cardd_hybrid",):
         model = CarddHybrid(num_classes=num_classes, base=base).to(device)
+    elif arch in ("hybrid_segmentation", "hybrid"):
+        model = HybridSegmentation(num_classes=num_classes).to(device)
     else:
         model = CarddUNet(num_classes=num_classes, base=base).to(device)
     model.load_state_dict(ckpt["model_state"])
