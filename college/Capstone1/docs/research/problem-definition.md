@@ -60,6 +60,17 @@ hidden-damage probability, final workshop quotation.
 
 ## Comparison arms to beat
 
+> **Current arms (2026-09-22, architecture spec v3).** The legacy
+> `CarddUNet`/`CarddHybrid` pairs below are superseded as *research arms* by
+> the spec-v3 models: **baseline** = `ResNet34UNet`
+> (`ml/models/resnet34_unet.py`), **proposed** = `HybridSegmentation`
+> (`ml/models/hybrid_segmentation.py`). Both were run for 15 epochs (seed 0,
+> full official splits): baseline foreground mIoU 0.6127, hybrid 0.5963 —
+> **preliminary validation only, both still improving at epoch 14, no
+> architecture claimed superior.** The demo default is `pilot15_hybrid`
+> (research plan); the controlled comparison remains the planned 60-epoch /
+> 3-seed run.
+
 1. **A1 — current baseline:** `CarddUNet`, softmax CE, 5 epochs
    (`cardd_baseline_ce`: val mIoU 0.0475, MEASURED, underfit, SUPERSEDED).
 2. **A2 — same harness, more epochs:** separates "underfitting" from

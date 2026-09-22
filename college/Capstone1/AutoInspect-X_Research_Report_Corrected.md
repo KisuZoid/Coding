@@ -185,7 +185,7 @@ official splits are preserved (train 2,816 images / 6,211 instances, val 810 /
 1,744, test 374 / 785 — MEASURED from the local audit). CarDD contains damage
 masks only: no vehicle-part masks, no vehicle metadata, and no repair-cost or
 repair-action annotations *(inference from the schema; confirmed in
-`cost-multimodal-data-readiness.md`)*. That is precisely why the multimodal
+`archive/docs/cost-multimodal-data-readiness.md`)*. That is precisely why the multimodal
 cost framing of the earlier report version could not be built honestly.
 
 **VehiDE (Huynh et al., 2023)** — *sourced.* The VehiDE dataset [2] is a
@@ -581,6 +581,20 @@ outside SYNTHETIC LABEL.
 * **H3 (open):** whether the hybrid's added capacity changes the honesty
   trade-off (precision vs confidence) is an empirical question, not a prior.
 
+> **Addendum — 2026-09-22 15-epoch pilots (preliminary validation, not a
+> conclusion).** The legacy `cardd_hybrid_ce` demo checkpoint is superseded by
+> the architecture-spec v3 research models. Two 15-epoch pilots (seed 0, full
+> official CarDD splits, identical schedule) were run as an intermediate check:
+> `pilot15_baseline` (`ResNet34UNet`) reached **foreground mIoU 0.6127 /
+> mDice 0.7440 / pixel accuracy 0.8979**, and `pilot15_hybrid`
+> (`HybridSegmentation`) reached **foreground mIoU 0.5963 / mDice 0.7320 /
+> pixel accuracy 0.8873** (@ epoch 14, both still improving; EMA weights; seeds
+> 0/1/2 not yet run). These are preliminary validation observations only — they
+> do **not** establish that either architecture is superior, and no statistical
+> significance is claimed. The planned full comparison remains the 60-epoch,
+> 3-seed experiment (Task 24). The demo default is `pilot15_hybrid` per the
+> research plan; `pilot15_baseline` is retained as the controlled baseline arm.
+
 ## **11\. Baselines**
 
 > 1. **Baseline 1 (vision-only segmentation, current):** `CarddUNet` trained
@@ -599,8 +613,10 @@ concat + metadata", "cross-attention fusion") are removed with the cost scope.
 
 ## **12\. Experimental Design**
 
-The locked configuration in `docs/research/segmentation-experiment-config.md`
-(Phase 6) governs the baseline; the hybrid run follows the same contract:
+The locked configuration in `archive/docs/segmentation-experiment-config.md`
+(Phase 6, historical) governs the original baseline; the architecture spec
+`docs/architecture/cnn-transformer-segmentation.md` (v3) supersedes it, and the
+15-epoch pilot runs record their own (identical-schedule) config per experiment:
 
 | Item | Value |
 |---|---|

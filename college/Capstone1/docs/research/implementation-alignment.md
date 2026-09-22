@@ -2,7 +2,7 @@
 
 Status of the codebase against `AutoInspect-X_Research_Report_Corrected.md`
 (the canonical research document; photo-first rewrite dated 2026-09-21) and the
-bootstrap brief `CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md`.
+bootstrap brief `archive/docs/CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md`.
 
 Legend: `IMPLEMENTED` · `PARTIAL` · `NOT STARTED` · `PLANNED` · `REMOVED`
 
@@ -23,23 +23,37 @@ evidence payload → honest explanation, with no cost/repair outputs.
 
 ### Current implementation status
 
-- Segmentation core: `IMPLEMENTED` (demo hybrid, baseline SUPERSEDED).
-- Hybrid model: `IMPLEMENTED` as architecture **and** training (`cardd_hybrid_ce`
-  trained 2026-09-21; val mIoU 0.0504 / test 0.0586, MEASURED).
-- Research comparison (RQ1/RQ2): `PARTIAL` — A3 hybrid measured; A2 baseline
-  extension and the RQ2 metric still `PLANNED`.
+- Segmentation core: `IMPLEMENTED`. Research models (spec v3): baseline
+  `ResNet34UNet` + proposed `HybridSegmentation`, both implemented **and**
+  trained for 15 epochs (seed 0, full official splits): baseline foreground
+  mIoU 0.6127 / mDice 0.7440 / pixel accuracy 0.8979; hybrid foreground mIoU
+  0.5963 / mDice 0.7320 / pixel accuracy 0.8873 (@ epoch 14, both still
+  improving; **preliminary validation only — not a final conclusion, no
+  statistical significance claimed**). The legacy `CarddHybrid` demo run
+  (`cardd_hybrid_ce`, val mIoU 0.0504, MEASURED) is archived.
+- Demo default: `ml/experiments/pilot15_hybrid/best_checkpoint.pt`, loaded via
+  `MODEL_PATH` / container default; the baseline pilot is retained as the
+  controlled arm.
+- Research comparison (RQ1/RQ2): `PARTIAL` — pilots are 15-epoch preliminary
+  checks; the 60-epoch / 3-seed comparison and the RQ2 confidence-honesty
+  metric are still `PLANNED`.
 
 ### Evidence in repository
 
-- Baseline: `ml/models/cardd_unet.py` (ADR 0006) + `cardd_baseline_ce`
-  checkpoint (val mIoU 0.0475, MEASURED, underfit, SUPERSEDED).
-- Hybrid: `ml/models/cardd_hybrid.py` (ADR 0010, ~3.2 M params measured);
-  `cardd_hybrid_ce/best_checkpoint.pt` trained + `evaluation_summary.json`
-  written (MEASURED).
-- Experiment harness: `ml/training/train.py` (`--model cardd_unet|cardd_hybrid`),
-  `ml/evaluation/metrics.py`, shared loss `ml/training/loss.py`.
-- Inference + honesty: `ml/inference/engine.py` (`model_arch` dispatch),
-  `apps/api/container.py`.
+- Baseline: `ml/models/resnet34_unet.py` (spec v3 §9.1) + `pilot15_baseline`
+  run (`ml/experiments/pilot15_baseline/run_record.json`, archived legacy runs
+  under `archive/experiments/`).
+- Hybrid: `ml/models/hybrid_segmentation.py` (spec v3 §4/§5/§18) +
+  `pilot15_hybrid` run; legacy `ml/models/cardd_hybrid.py` (ADR 0010) kept in
+  the live tree because the engine/train dispatch still loads `cardd_*`
+  checkpoints.
+- Experiment harness: `ml/training/train.py` (`--model baseline|hybrid` plus
+  legacy `cardd_*` arm), `ml/evaluation/metrics.py`, shared loss
+  `ml/training/loss.py`.
+- Inference + honesty: `ml/inference/engine.py` (`model_arch` dispatch for
+  `resnet34_unet`/`baseline`, `hybrid`/`hybrid_segmentation`, and legacy
+  `cardd_*`), `apps/api/container.py` (foreground-mIoU notes from
+  `registry.json`).
 - Scope: `docs/decisions/0010-cardd-hybrid-model.md`,
   `docs/decisions/0011-photo-first-scope.md`.
 
@@ -142,7 +156,7 @@ photo-first scope.
 
 ### Evidence in repository
 
-- `docs/research/research-scope.md` (Out of scope): hidden-damage risk excluded
+- `archive/docs/research-scope.md` (Out of scope): hidden-damage risk excluded
   unless real ground-truth labels exist; synthetic labels do not qualify.
 - `docs/decisions/0004-ground-truth-labelling-policy.md`: synthetic hidden-damage
   labels are not evidence.
@@ -199,9 +213,11 @@ RQ2 confidence-honesty evaluation; test split evaluated once.
 
 ### Evidence in repository
 
-- `docs/research/segmentation-experiment-config.md` (locked design: official
-  splits, 7 channels, 512×512, batch 2 — 2.85 GB peak VRAM measured — Adam
-  1e-3 wd 1e-5, CosineAnnealingLR, 5 epochs, seed 0, best val mIoU checkpoint).
+- `archive/docs/segmentation-experiment-config.md` (historical Phase 6 locked
+  design: official splits, 7 channels, 512×512, batch 2 — 2.85 GB peak VRAM
+  measured — Adam 1e-3 wd 1e-5, CosineAnnealingLR, 5 epochs, seed 0, best val
+  mIoU checkpoint; superseded by the architecture spec v3 + recorded pilot
+  configs).
 - `ml/evaluation/metrics.py` (IoU/Dice/precision/recall, background excluded,
   absent classes 0.0); `ml/evaluation/small_damage.py` (train p25 ≈ 3,013.5 px
   @512, measured); `ml/evaluation/evaluate_run.py` (montages, summary).
@@ -250,7 +266,8 @@ public sources (VehiDE, CrashCar101) are reviewed as literature, not integrated.
 ### Recommended next action
 
 Keep CarDD as the sole integration. Any new dataset enters with licence + label
-mapping + split policy (experiment-principles §3) and a new ADR.
+mapping + split policy (recording the same reproducibility rules formerly in
+`archive/docs/experiment-principles.md` §3) and a new ADR.
 
 ---
 
