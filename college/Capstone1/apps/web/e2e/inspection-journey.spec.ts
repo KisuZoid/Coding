@@ -9,7 +9,7 @@ import { blurryImage, validImage } from "./png";
 // The committed demo checkpoint is git-ignored (ml/experiments/), exactly like
 // the pytest engine test that skips when it is absent. These journeys need the
 // real engine, so they only run where the checkpoint is present.
-const CHECKPOINT = resolve("../../ml/experiments/cardd_hybrid_ce/best_checkpoint.pt");
+const CHECKPOINT = resolve("../../ml/experiments/pilot15_hybrid/best_checkpoint.pt");
 const hasCheckpoint = existsSync(CHECKPOINT);
 
 /**

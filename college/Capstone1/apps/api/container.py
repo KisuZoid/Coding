@@ -28,12 +28,26 @@ from apps.api.storage import (
 from ml.inference.engine import SegmentationEngine
 
 _REGISTRY = Path("ml/experiments/registry.json")
-_DEFAULT_CHECKPOINT = Path("ml/experiments/cardd_hybrid_ce/best_checkpoint.pt")
+_DEFAULT_CHECKPOINT = Path("ml/experiments/pilot15_hybrid/best_checkpoint.pt")
 
 
 def _canon_arch(value: str) -> str:
-    """Canonical arch token: strip case and underscores before comparing."""
-    return "".join(value.lower().split("_"))
+    """Canonical arch token, alias-aware across class names and token names.
+
+    ``HybridSegmentation`` (the class actually built) and ``hybrid`` (the
+    checkpoint key) must compare equal; the same holds for ResNet34UNet /
+    ``resnet34_unet`` / ``baseline`` and the legacy Cardd* family.
+    """
+    compact = "".join(value.lower().split("_"))
+    return {
+        "baseline": "resnet34unet",
+        "resnet34unet": "resnet34unet",
+        "hybridsegmentation": "hybrid",
+        "hybrid": "hybrid",
+        "carddhybrid": "carddhybrid",
+        "carddunet": "carddunet",
+        "unet": "carddunet",
+    }.get(compact, compact)
 
 
 def _load_checkpoint(directory: Path) -> tuple[str, int, str]:
@@ -49,19 +63,30 @@ def _load_checkpoint(directory: Path) -> tuple[str, int, str]:
     return str(ckpt), int(base), str(arch)
 
 
-def _registry_meta(directory: Path) -> tuple[str | None, float | None]:
-    """Look up the committed run's git revision + val mIoU from registry.json."""
+def _registry_meta(directory: Path) -> tuple[str | None, float | None, str | None]:
+    """Look up the committed run's git revision + validation metric from registry.
+
+    Prefers ``best_val_foreground_miou`` (the metric recorded by the research
+    smoke/pilot runs); falls back to the legacy ``best_val_mean_iou``. The third
+    element names which key supplied the value.
+    """
     if not _REGISTRY.is_file():
-        return None, None
+        return None, None, None
     try:
         runs = json.loads(_REGISTRY.read_text())
     except json.JSONDecodeError:
-        return None, None
+        return None, None, None
     prefix = f"{directory.name}-"
     for run in runs:
         if run.get("experiment_id", "").startswith(prefix):
-            return run.get("git_revision"), run.get("best_val_mean_iou")
-    return None, None
+            metric = run.get("best_val_foreground_miou")
+            if isinstance(metric, int | float):
+                return run.get("git_revision"), float(metric), "best_val_foreground_miou"
+            metric = run.get("best_val_mean_iou")
+            if isinstance(metric, int | float):
+                return run.get("git_revision"), float(metric), "best_val_mean_iou"
+            return run.get("git_revision"), None, None
+    return None, None, None
 
 
 @dataclass
@@ -83,15 +108,26 @@ class Container:
         if self._engine is None:
             checkpoint_path = Path(self.settings.model_path or _DEFAULT_CHECKPOINT)
             directory = checkpoint_path.parent if checkpoint_path.is_file() else None
-            git_revision, iou = _registry_meta(directory) if directory else (None, None)
+            meta = _registry_meta(directory) if directory else (None, None, None)
+            git_revision, iou, iou_key = meta
 
             equipped = _load_checkpoint(directory) if directory else None
             base, arch = (64, "cardd_unet") if equipped is None else (equipped[1], equipped[2])
 
             notes: tuple[str, ...] | None = None
             if iou is not None:
+                if iou_key == "best_val_foreground_miou":
+                    model_note = (
+                        "Current research segmentation model (CarDD, 15-epoch pilot, "
+                        f"intermediate): foreground mIoU ~{iou:.4f} — not a final "
+                        "research conclusion."
+                    )
+                else:
+                    model_note = (
+                        f"Current research segmentation model (CarDD): validation mIoU ~{iou:.4f}."
+                    )
                 notes = (
-                    f"Current research segmentation model (CarDD): validation mIoU ~{iou:.4f}.",
+                    model_note,
                     "Per-pixel predictions are preliminary; not verified damage extent.",
                     "Mask-derived severity is 'not currently reliable' for this model.",
                 )

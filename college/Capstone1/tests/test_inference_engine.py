@@ -15,6 +15,8 @@ from ml.inference import (
     SegmentationEngine,
 )
 from ml.models.cardd_unet import CarddUNet
+from ml.models.hybrid_segmentation import HybridSegmentation
+from ml.models.resnet34_unet import ResNet34UNet
 
 
 def _solid_rgb(size: tuple[int, int] = (64, 80)) -> np.ndarray:
@@ -33,6 +35,62 @@ def _write_checkpoint(path: Path, *, base: int = 64, epoch: int = 99) -> None:
         {"model_state": model.state_dict(), "base": base, "epoch": epoch},
         path,
     )
+
+
+def _write_research_checkpoint(path: Path, *, arch: str, base: int = 0, epoch: int = 14) -> None:
+    model = (
+        ResNet34UNet(num_classes=7, pretrained=False)
+        if arch in {"resnet34_unet", "baseline"}
+        else HybridSegmentation(num_classes=7, pretrained=False)
+    )
+    torch.save(
+        {"model_state": model.state_dict(), "base": base, "epoch": epoch, "model_arch": arch},
+        path,
+    )
+
+
+def test_research_archs_dispatch_and_predict(
+    tmp_path: Path,
+) -> None:
+    import torch.nn as nn
+
+    cases = [
+        ("resnet34_unet", ResNet34UNet),
+        ("baseline", ResNet34UNet),
+        ("hybrid", HybridSegmentation),
+        ("hybrid_segmentation", HybridSegmentation),
+    ]
+    for arch, model_cls in cases:
+        ckpt = tmp_path / f"{arch}.pt"
+        _write_research_checkpoint(ckpt, arch=arch)
+        engine = SegmentationEngine.from_checkpoint(ckpt, base=0, device="cpu")
+        assert isinstance(engine._model, nn.Module)
+        assert isinstance(engine._model, model_cls)
+        assert engine.metadata.experiment_id == ckpt.parent.name
+        assert engine.metadata.base == 0
+        assert engine.metadata.epoch == 14
+        result = engine.predict(_random_rgb())
+        assert result.mask.shape == (512, 512)
+        assert result.prob.shape == (7, 512, 512)
+
+
+def test_research_archs_skip_legacy_base_check(tmp_path: Path) -> None:
+    ckpt = tmp_path / "pilot.pt"
+    _write_research_checkpoint(ckpt, arch="hybrid", base=0)
+    engine = SegmentationEngine.from_checkpoint(ckpt, base=64, device="cpu")
+    assert isinstance(engine._model, HybridSegmentation)
+    result = engine.predict(_random_rgb())
+    assert result.mask.shape == (512, 512)
+
+
+def test_unknown_arch_raises_loudly(tmp_path: Path) -> None:
+    ckpt = tmp_path / "unknown.pt"
+    _write_research_checkpoint(ckpt, arch="hybrid")
+    data = torch.load(str(ckpt), map_location="cpu", weights_only=False)
+    data["model_arch"] = "something_else"
+    torch.save(data, ckpt)
+    with pytest.raises(ModelVersionError):
+        SegmentationEngine.from_checkpoint(ckpt, base=0, device="cpu")
 
 
 def test_from_checkpoint_loads_and_predicts(tmp_path: Path) -> None:

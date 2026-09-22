@@ -11,13 +11,14 @@ for the validation and test splits, the full metric set locked in
 
 Writes `evaluation_summary.json` and, for a strided sample of images, a
 qualitative montage (original / GT / prediction / overlay) into
-`<out_dir>/evaluation/`. Artifacts live outside git under `ml/experiments/`.
+`<out_dir>/evaluation/`. Active artifacts live outside git under `ml/experiments/`;
+archived runs sit under `archive/experiments/` (also git-ignored).
 
 Example (`ai` env):
 
     python ml/evaluation/evaluate_run.py \\
         --data-root datasets/CarDD_COCO \\
-        --run-dir ml/experiments/phase4_baseline \\
+        --run-dir ml/experiments/pilot15_hybrid \\
         --num-examples 8
 """
 

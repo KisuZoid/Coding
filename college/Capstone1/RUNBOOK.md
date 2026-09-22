@@ -43,15 +43,15 @@ Open:
 | `ai` conda env | CUDA torch 2.5.1+cu121, fastapi, uvicorn, langgraph, langchain-groq, opencv, pillow |
 | Node.js | v22.22.2 via nvm (frontend build) |
 | CarDD dataset | `datasets/CarDD_COCO` (git-ignored) |
-| Demo checkpoint | `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt` (git-ignored, trained 2026-09-21; retrain if absent — see section 6) |
+| Demo checkpoint | `ml/experiments/pilot15_hybrid/best_checkpoint.pt` (git-ignored, 15-epoch pilot trained 2026-09-22; retrain if absent — see section 6) |
 | System Chrome | used by Playwright (`channel: "chrome"`, no browser download) |
 
 ### `.env` — required keys
 
 | Key | Purpose |
 |---|---|
-| `MODEL_PATH` | path to the checkpoint, e.g. `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt` |
-| `MODEL_VERSION` | e.g. `cardd_hybrid_ce` |
+| `MODEL_PATH` | path to the checkpoint, e.g. `ml/experiments/pilot15_hybrid/best_checkpoint.pt` |
+| `MODEL_VERSION` | e.g. `pilot15_hybrid` |
 | `GROQ_MODEL` | assistant model name for LangChain ChatGroq (default `openai/gpt-oss-20b`) |
 | `GROQ_AUTO_INSPECT_API_KEY` | assistant chat via LangChain ChatGroq; if empty, `build_assistant` wires the offline `StubAssistant` (no network) |
 | `CORS_ORIGINS` | default `["http://localhost:3000"]` — needs no edit for the demo frontend |
@@ -184,24 +184,30 @@ python ml/training/smoke_test.py --data-root datasets/CarDD_COCO
 # Evaluate an existing run (full splits + montages under ml/experiments/<run>/)
 python ml/evaluation/evaluate_run.py \
   --data-root datasets/CarDD_COCO \
-  --run-dir ml/experiments/cardd_hybrid_ce
+  --run-dir ml/experiments/pilot15_hybrid
 
-# Train the hybrid (default; ADR 0010) on the RTX 3050 (~4 GB VRAM; batch 2 fits)
+# Train the current research baseline or hybrid (CNN/U-Net vs CNN-transformer
+# ablation, architecture spec v3); 15-epoch pilots took ~45 min on a T4.
+# Training longer (60 epochs, 3 seeds) is required before any final claim.
 python ml/training/train.py \
   --data-root datasets/CarDD_COCO \
-  --label cardd_hybrid_ce \
-  --epochs 5 \
-  --batch-size 2
-# or pass --model cardd_unet for the plain U-Net baseline arm.
-# The resulting best_checkpoint.pt carries a `model_arch` key and the engine
-# dispatches on it; the demo default reads ml/experiments/cardd_hybrid_ce/.
+  --label pilot15_hybrid \
+  --model hybrid \
+  --epochs 15 \
+  --batch-size 4
+# or pass --model baseline --label pilot15_baseline for the ResNet34-U-Net arm
+# (identical schedule, seeds 0/1/2 for the intended 3-seed ablation).
+# The resulting best_checkpoint.pt carries a `model_arch` key (or `hybrid`);
+# the engine dispatches on it; the demo default reads
+# ml/experiments/pilot15_hybrid/.
 ```
 
 The real-engine browser journeys and
 `test_full_journey_happy_path_with_real_engine` skip (not fail) until
-`ml/experiments/cardd_hybrid_ce/best_checkpoint.pt` has actually been trained
-and its inference verified. As of 2026-09-21 the hybrid is trained (val mIoU
-0.0504 / test 0.0586) and those journeys run and pass.
+`ml/experiments/pilot15_hybrid/best_checkpoint.pt` has actually been trained
+and its inference verified. As of 2026-09-22 the 15-epoch pilot is trained
+(foreground mIoU 0.5963) and those journeys run and pass. That pilot is an
+intermediate result — not a final research conclusion.
 
 Training/inference artefacts (checkpoints, run records, `registry.json`) stay
 git-ignored under `ml/experiments/`; only experiment IDs are referenced from
@@ -227,7 +233,7 @@ GPU training never runs in CI.
 | Symptom | Cause / fix |
 |---|---|
 | `ModuleNotFoundError: torch / fastapi` | shell is not in `ai` — run `conda activate ai` |
-| API `500`, `MODEL_UNAVAILABLE` on `/analyze` | `MODEL_PATH` unset or checkpoint missing — set `.env`, confirm `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt` exists |
+| API `500`, `MODEL_UNAVAILABLE` on `/analyze` | `MODEL_PATH` unset or checkpoint missing — set `.env`, confirm `ml/experiments/pilot15_hybrid/best_checkpoint.pt` exists |
 | API `500`, `INFERENCE_FAILED` on `/analyze` | model loaded but the forward pass failed — see backend logs for the real traceback |
 | API `503`, `LLM_UNAVAILABLE` on `/chat` | `GROQ_AUTO_INSPECT_API_KEY` set but the ChatGroq call failed — check the key and `GROQ_MODEL`. The 2026-09-21 incident was a `404 model_not_found` for the old default `llama-3.3-70b-versatile` on this key; the code default is now `openai/gpt-oss-20b`. Clear the key to fall back to the offline `StubAssistant` |
 | Playwright: API port in use | a manual backend occupies the port — stop it, or run with `REUSE_BACKEND=1`/`BACKEND_CMD` overrides |

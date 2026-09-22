@@ -22,7 +22,7 @@ Example (`ai` env):
 
     python ml/analysis/error_analysis.py \\
         --data-root datasets/CarDD_COCO \\
-        --run-dir ml/experiments/cardd_baseline_ce
+        --run-dir ml/experiments/pilot15_baseline
 """
 
 from __future__ import annotations
