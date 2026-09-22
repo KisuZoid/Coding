@@ -47,6 +47,11 @@ review compiled.
   `references.bib` (30 verified references), compiled with tectonic
   (IEEEtran.cls + IEEEtran.bst local) → `literature_review.pdf` **10 pages, 0
   errors**; pilot observations clearly separated from literature findings.
+- **Literature review updates (Task C8).** Author block updated to **Capstone
+  Group 160 — School of Computing Science Engineering and AI, VIT Bhopal
+  University, Sehore**; rebuilt PDF with tectonic. Fixed a latent dangling
+  reference: added `\label{sec:hybrid}` so `\ref{sec:hybrid}` resolves instead
+  of rendering `??` (single ref, both occurrences verified clean in the output).
 - **Model-integration fix (Task D2).** Root cause of the demo "model
   unavailable" error: the local `.env` still pinned `MODEL_PATH` /
   `MODEL_VERSION` to the archived `cardd_hybrid_ce` run; the router hid the
