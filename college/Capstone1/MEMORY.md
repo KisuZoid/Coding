@@ -60,7 +60,10 @@ ADRs and git log.
 - **Literature review:** `docs/research/literature_review.tex` + `references.bib`
   (30 verified refs), compiled with tectonic → `literature_review.pdf` (10 pp.,
   IEEEtran; `IEEEtran.cls`/`.bst` copied next to the tex for self-contained
-  builds; `*.aux/bbl/blg/synctex` git-ignored).
+  builds; `*.aux/bbl/blg/synctex` git-ignored). Author block = **Capstone Group
+  160, School of Computing Science Engineering and AI, VIT Bhopal University,
+  Sehore**; `\label{sec:hybrid}` added so `\ref{sec:hybrid}` resolves (was a
+  dangling `??` the previous PDF silently rendered).
 
 ## Conventions (do not break)
 
