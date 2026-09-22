@@ -250,7 +250,8 @@ they carry CarDD's own annotation quirks documented in the research report §7
 | Vehicle-part masks (hood/bumper…) | part-level severity | Not available in CarDD → ADR 0005; ADR 0009: part segmentation NOT adopted; only `damaged_pixels/total` ratio allowed |
 | Physical scale reference for cm² | physical area | Unavailable from uncontrolled photos → out of scope (ADR 0004) |
 
-The cost/multimodal data-readiness report exists (`cost-multimodal-data-readiness.md`),
+The cost/multimodal data-readiness report exists
+(`archive/docs/cost-multimodal-data-readiness.md`),
 and its finding (no cost/metadata labels in CarDD) is **precisely why** ADR 0011
 removed the cost/fusion scope rather than blocking it further.
 
@@ -459,7 +460,8 @@ Top-level (tracked files; dirs from fs):
 - Root docs: `README.md`, `init.md`, `CLAUDE.md`, `AGENTS.md`, `MEMORY.md`,
   `TASKS.md`, `LOGIC.md`, `SECURITY.md`, `CONTRIBUTING.md`, `RUNBOOK.md`,
   `AutoInspect-X_Research_Report_Corrected.md`,
-  `CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md`, `AutoInspect-X_Capstone.pptx`.
+  `archive/docs/CLAUDE_CODE_AUTOinspectX_BOOTSTRAP_UPDATED.md` (archived input
+  brief), `AutoInspect-X_Capstone.pptx`.
 - `.github/workflows/ci.yml`, `pyproject.toml`, `requirements-ci.txt`,
   `.env.example`, `.gitignore`, `conftest.py`, `uv.lock`.
 
@@ -540,7 +542,8 @@ Implemented record for `cardd_baseline_ce`:
   path, git_revision.
 - `error_analysis_report.md` + montages + `selection.json` — qualitative record.
 - Split integrity: official CarDD splits used; train/val/test never mixed;
-  leakage-prevention rules in `docs/research/experiment-principles.md`.
+  leakage-prevention rules per `AGENTS.md` §4 (formerly
+  `archive/docs/experiment-principles.md`).
 - `CarddHybrid` run (when it happens) records `model_arch` in the checkpoint
   (ADR 0010) so training ↔ serving architecture never drifts.
 
@@ -554,7 +557,8 @@ revision.
 ## 19. Product Architecture
 
 `docs/architecture/overview.md` (2026-09-08) describes the IMPLEMENTED system as
-of that date; the older `implementation-gap-report.md` is **superseded**. The
+of that date; the older `archive/docs/implementation-gap-report.md` is
+**superseded**. The
 ADR 0011 scope cut is reflected in the working tree (no cost/repair modules).
 
 - **Backend**: FastAPI, three routers (`health`, `inspection`, `chat`), DI
@@ -805,8 +809,9 @@ quality gates before finishing.
 - Decisions via ADRs (`docs/decisions/`, 0001–0011) — historic + active.
 - Experiment supremacy via `registry.json` `status`/`status_reason`
   (ACTIVE/SUPERSEDED/PLANNED).
-- Doc versioning: `implementation-gap-report.md` superseded in favour of
-  `overview.md`; AGENTS/CLAUDE/MEMORY/TASKS/LOGIC updated at session close.
+- Doc versioning: `archive/docs/implementation-gap-report.md` superseded in
+  favour of `overview.md`; AGENTS/CLAUDE/MEMORY/TASKS/LOGIC updated at session
+  close.
 - The one known stale doc: MEMORY.md "MP4 remains in public/" (§2) — flagged for
   correction, not yet updated (documentation-only mandate).
 
