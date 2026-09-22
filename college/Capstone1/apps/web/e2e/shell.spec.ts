@@ -8,7 +8,7 @@ import { validImage } from "./png";
 
 // Engine-gated journeys need the committed (but git-ignored) demo checkpoint,
 // like tests/test_e2e_integration.py and the inspection journey.
-const CHECKPOINT = resolve("../../ml/experiments/cardd_hybrid_ce/best_checkpoint.pt");
+const CHECKPOINT = resolve("../../ml/experiments/pilot15_hybrid/best_checkpoint.pt");
 const hasCheckpoint = existsSync(CHECKPOINT);
 
 /**

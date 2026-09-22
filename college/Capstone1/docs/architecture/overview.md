@@ -26,7 +26,7 @@ AutoInspect-X/
 │   └── experiments/    Registry + per-run records (checkpoints git-ignored)
 ├── docs/
 │   ├── decisions/      ADRs 0001–0011
-│   └── architecture/   This overview, gap report (superseded)
+│   └── architecture/   This overview (+ archived gap report under archive/)
 ├── public/             4 demo clips served to the frontend (video.mapped timeline)
 ├── tests/              Pytest suite (API-level + backend E2E, 123 tests)
 ├── storage/            SQLite ledger + session-scoped image files (ephemeral)
@@ -52,7 +52,7 @@ HTTP contracts (`/health`, `/inspection/session`, `/chat`,
 `/inspection/{id}/consent`, `/inspection/{id}`, DELETE). The backend loads a
 model artefact only through `ml/inference` (`SegmentationEngine`, resolved from
 `MODEL_PATH` / `MODEL_VERSION`, dispatching on the checkpoint's `model_arch`;
-demo default `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt`).
+demo default `ml/experiments/pilot15_hybrid/best_checkpoint.pt`).
 
 ## 3. Backend layering (`apps/api`)
 
@@ -94,17 +94,21 @@ Infrastructure          apps/api/storage — SQLite ledger + fs image store,
 
 Training and inference are separate code paths (ADR 0008: CE over argmax). The
 API depends on a versioned model artefact resolved from configuration and load
-notes (val mIoU, git revision) read from `ml/experiments/registry.json`; it
-never imports `ml/training`. Checkpoints are arch-tagged (`model_arch` key):
-`CarddHybrid` is the default, legacy `CarddUNet` checkpoints keep loading
-(ADR 0010); a base/arch mismatch surfaces as a loud `ModelVersionError`. The
-demo default is `ml/experiments/cardd_hybrid_ce/best_checkpoint.pt`, which must
-be trained; until it exists the real-engine tests skip (not fail). The historical
-fallback `cardd_baseline_ce` (val mIoU ≈ 0.048) was explicitly
-**demonstration-grade and underfit**: the product surfaces confidence, a
+notes (foreground mIoU, git revision) read from `ml/experiments/registry.json`;
+it never imports `ml/training`. Checkpoints are arch-tagged (`model_arch` key)
+and the engine dispatches `resnet34_unet`/`baseline` → `ResNet34UNet`,
+`hybrid`/`hybrid_segmentation` → `HybridSegmentation` (research models, spec v3
+§4/§9.1), while legacy `cardd_*` checkpoints keep loading (ADR 0010); a
+base/arch mismatch surfaces as a loud `ModelVersionError`. The
+demo default is `ml/experiments/pilot15_hybrid/best_checkpoint.pt`
+— a 15-epoch, seed-0 pilot (foreground mIoU 0.5963 at epoch 14, still
+improving). That pilot is **preliminary, not a final research conclusion**;
+the baseline pilot (`pilot15_baseline`, foreground mIoU 0.6127) is kept for the
+planned 60-epoch / 3-seed comparison. Until the checkpoint exists the
+real-engine tests skip (not fail). The product always surfaces confidence, a
 low-confidence banner, and the "not verified damage extent" caveat rather than
-overclaiming. Any quality claim about `cardd_hybrid_ce` is contingent on its
-training and verified inference.
+overclaiming; any quality claim about a run is contingent on its training and
+verified inference.
 
 ## 5. Frontend structure (`apps/web`)
 

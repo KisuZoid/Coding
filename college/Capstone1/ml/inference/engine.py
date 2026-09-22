@@ -1,12 +1,26 @@
-"""Baseline segmentation engine (Phase D, ADR 0003).
+"""Segmentation engine (Phase D, ADR 0003).
 
-Loads a CarddUNet checkpoint through the artefact contract — state dict with
-``model_state`` / ``base`` / ``epoch`` keys — and exposes a typed prediction
-API for the product. A missing or mismatched artefact fails loudly at
-construction; there is no silent fallback (ADR 0003). Every result carries a
-``QualityAssessment`` with honest, model-card-grounded limitations and a
-``low_confidence`` flag, so downstream stages (Phase E features and the API)
-can never present the underfit baseline as reliable ground truth.
+Loads a checkpoint through the artefact contract — a state dict with
+``model_state`` plus ``base`` and ``model_arch`` keys — and exposes a typed
+prediction API for the product. The architecture is dispatched from the
+checkpoint's ``model_arch`` key:
+
+- ``resnet34_unet`` / ``baseline``  -> ``ResNet34UNet`` (research baseline,
+  architecture spec v3 §9.1)
+- ``hybrid`` / ``hybrid_segmentation`` -> ``HybridSegmentation`` (research
+  model, spec v3 §4/§5/§18)
+- ``cardd_hybrid`` / ``CarddHybrid`` -> ``CarddHybrid`` (legacy hybrid, ADR 0010)
+- ``cardd_unet`` / ``CarddUNet`` / missing key -> ``CarddUNet`` (legacy U-Net)
+
+A missing or mismatched artefact fails loudly at construction; there is no
+silent fallback (ADR 0003). Every result carries a ``QualityAssessment`` with
+honest, model-card-grounded limitations and a ``low_confidence`` flag, so
+downstream stages (Phase E features and the API) can never present an underfit
+or intermediate model as reliable ground truth.
+
+The research models return ``(main, aux1, aux2)`` from ``forward`` (deep
+supervision); this module normalizes to the main head before decoding, exactly
+as ``ml/evaluation/evaluate_run.py::forward_main_logits`` does.
 """
 
 from __future__ import annotations
@@ -29,27 +43,54 @@ from ml.inference.errors import ModelLoadError, ModelVersionError
 from ml.inference.preprocess import load_image_rgb, preprocess_image
 from ml.models.cardd_hybrid import CarddHybrid
 from ml.models.cardd_unet import CarddUNet
+from ml.models.hybrid_segmentation import HybridSegmentation
+from ml.models.resnet34_unet import ResNet34UNet
 
 # Honest limits for the current research model (carried for deployments that
-# omit registry metadata). Validation mIoU ~0.050 for the CarddHybrid run
-# `cardd_hybrid_ce`; several minority classes are not reliably separated.
+# omit registry metadata). The 15-epoch pilots (seed 0, full CarDD splits)
+# reached a foreground mIoU of ~0.613 (baseline) / ~0.596 (hybrid) — intermediate,
+# not a final research conclusion. Several minority classes are not reliably
+# separated at this stage.
 _BASELINE_LIMITATIONS = (
-    "Current research segmentation model (CarDD, hybrid, underfit): validation mIoU ~0.050.",
+    "Current research segmentation model (CarDD, 15-epoch pilot, intermediate): "
+    "foreground mIoU ~0.596 to 0.613 measured; not a final research conclusion.",
     "Per-pixel predictions are preliminary; not verified damage extent.",
     "Mask-derived severity is 'not currently reliable' for this model.",
 )
 
 
-def _build_model(arch: str, *, base: int, num_classes: int) -> CarddUNet | CarddHybrid:
+def _main_logits(model: torch.nn.Module, tensor: torch.Tensor) -> torch.Tensor:
+    """Forward pass normalized to the main segmentation head.
+
+    Research models (``ResNet34UNet``, ``HybridSegmentation``) return
+    ``(main, aux1, aux2)`` under deep supervision; legacy models return a single
+    logits tensor. Return the main head in both cases.
+    """
+    out = model(tensor)
+    if isinstance(out, tuple | list):
+        return cast(torch.Tensor, out[0])
+    return cast(torch.Tensor, out)
+
+
+def _build_model(arch: str, *, base: int, num_classes: int) -> torch.nn.Module:
     """Instantiate the checkpoint's architecture from its ``model_arch`` key.
 
     Legacy baselines predate the key (or store ``cardd_unet``) and map to
-    CarddUNet; hybrid runs store ``cardd_hybrid``. Unknown keys fail loudly so
-    an artefact is never silently run with the wrong architecture.
+    CarddUNet; hybrid runs store ``cardd_hybrid``; the current research
+    baseline/hybrid store ``resnet34_unet`` / ``hybrid`` (architecture spec v3).
+    The pretrained encoder is deliberately not downloaded here — the checkpoint
+    ``model_state`` is authoritative and replaced immediately after. Unknown
+    keys fail loudly so an artefact is never silently run with the wrong
+    architecture.
     """
-    if arch == "CarddHybrid" or arch == "cardd_hybrid":
+    arch_l = "".join(arch.lower().split("_"))
+    if arch_l in {"resnet34unet", "baseline"}:
+        return ResNet34UNet(num_classes=num_classes, pretrained=False)
+    if arch_l in {"hybrid", "hybridsegmentation"}:
+        return HybridSegmentation(num_classes=num_classes, pretrained=False)
+    if arch_l in {"carddhybrid"}:
         return CarddHybrid(base=base, num_classes=num_classes)
-    if not arch or arch in {"CarddUNet", "cardd_unet"}:
+    if not arch or arch_l in {"carddunet"}:
         return CarddUNet(base=base, num_classes=num_classes)
     raise ModelVersionError(f"unknown model_arch in checkpoint: {arch!r}")
 
@@ -170,13 +211,19 @@ class SegmentationEngine:
         checkpoint_path: Path | str,
         *,
         model_version: str | None = None,
-        experiment_id: str = "cardd_baseline_ce",
+        experiment_id: str | None = None,
         git_revision: str | None = None,
         base: int = 64,
         num_classes: int = NUM_CLASSES,
         device: str | torch.device | None = None,
         baseline_notes: tuple[str, ...] | None = None,
     ) -> SegmentationEngine:
+        """Build an engine from a git-ignored, locally present checkpoint.
+
+        ``experiment_id`` defaults to the checkpoint's parent directory name
+        (e.g. ``pilot15_hybrid``) so the metadata never mislabels which run an
+        artefact came from.
+        """
         path = Path(checkpoint_path)
         if not path.is_file():
             raise ModelLoadError(f"model checkpoint not found: {path}")
@@ -186,13 +233,17 @@ class SegmentationEngine:
             raise ModelLoadError(f"could not read checkpoint {path}: {exc}") from exc
         if not isinstance(checkpoint, dict) or "model_state" not in checkpoint:
             raise ModelLoadError(f"checkpoint lacks the model_state contract: {path}")
-        ckpt_base = checkpoint.get("base")
-        if isinstance(ckpt_base, int) and ckpt_base != base:
-            raise ModelVersionError(
-                f"checkpoint built with base={ckpt_base}, engine configured for base={base}"
-            )
         arch = checkpoint.get("model_arch")
         arch_name = arch if isinstance(arch, str) else ""
+        # `base` is a legacy (Cardd*) channel multiplier; the research
+        # checkpoint files (resnet34_unet / hybrid) store base=0 as a contract
+        # fill-in, so the consistency check applies to legacy architectures only.
+        if arch_name.lower().startswith("cardd"):
+            ckpt_base = checkpoint.get("base")
+            if isinstance(ckpt_base, int) and ckpt_base != base:
+                raise ModelVersionError(
+                    f"checkpoint built with base={ckpt_base}, engine configured for base={base}"
+                )
         model = _build_model(arch_name, base=base, num_classes=num_classes)
         try:
             model.load_state_dict(cast(dict[str, Any], checkpoint["model_state"]))
@@ -201,7 +252,7 @@ class SegmentationEngine:
         epoch = checkpoint.get("epoch")
         metadata = ModelMetadata(
             model_version=model_version,
-            experiment_id=experiment_id,
+            experiment_id=experiment_id or path.parent.name,
             base=base,
             num_classes=num_classes,
             checkpoint_path=str(path.resolve()),
@@ -219,7 +270,7 @@ class SegmentationEngine:
     def predict(self, rgb: np.ndarray) -> SegmentationResult:
         """Segment one RGB uint8 image and return typed, honest output."""
         tensor = preprocess_image(rgb).unsqueeze(0).to(self._device)
-        logits = self._model(tensor).squeeze(0).cpu()  # 7x512x512
+        logits = _main_logits(self._model, tensor).squeeze(0).cpu()  # 7x512x512
         prob = torch.softmax(logits, dim=0).float()
         mask = torch.argmax(logits, dim=0).to(torch.uint8)
         confidence = prob.max(dim=0).values
