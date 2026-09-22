@@ -49,6 +49,7 @@ mlruns/
 wandb/
 checkpoints/
 ml/experiments/
+archive/experiments/
 
 # Dataset audit generated artifacts (regenerable via scripts)
 ml/datasets/reports/vis_samples/
@@ -65,3 +66,14 @@ ml/datasets/reports/vis_samples/
 playwright-report/
 test-results/
 .vercel/
+
+# LaTeX build artifacts (regenerated on compile)
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex
+*.synctex.gz
+*.fls
+*.fdb_latexmk
