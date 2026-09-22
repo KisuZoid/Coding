@@ -1,0 +1,848 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% AutoInspect-X — Capstone literature review.
+% Author block is a placeholder to be replaced before any submission.
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Vehicle Exterior Damage Segmentation: A Review of Convolutional,
+Transformer, and Hybrid Architectures for Automotive Damage
+Inspection\\
+{\footnotesize AutoInspect-X Capstone Literature Review}
+}
+
+\author{\IEEEauthorblockN{Student Name (placeholder)}
+\IEEEauthorblockA{\textit{Department of Computer Science} \\
+\textit{Institution} \\
+City, Country \\
+email@example.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Automated visual inspection of vehicle exterior damage is a long-standing
+application of computer vision for insurance claims, used-vehicle inspection,
+and driving-assistance systems. The task has two dominant formulations ---
+damage detection/classification and damage \emph{segmentation}. A 2025
+systematic review confirms that detection and classification have a large,
+saturated applied literature, whereas pixel-level segmentation of fine,
+spread-out damage remains an active front. This review synthesizes verified
+literature across four threads relevant to a bounded, single-photo damage
+\textbf{segmentation} study: (i) public damage-segmentation datasets (CarDD,
+VehiDE, CrashCar101 and related resources); (ii) convolutional segmentation
+architectures (FCN, U-Net, ResNet, DeepLab-style atrous designs, HRNet,
+Mask~R-CNN) and efficient networks; (iii) transformer and CNN--transformer
+hybrid designs (ViT, SETR, SegFormer, Swin, TransUNet) and the role of
+attention for global context; and (iv) uncertainty/confidence estimation
+(aleatoric vs.\ epistemic taxonomy, MC dropout, deep ensembles) as the basis of
+an honesty contract between model predictions and claims. We close with the
+research gaps this evidence supports and clearly-separate \emph{literature
+findings} from the \emph{preliminary experimental observations} of the
+AutoInspect-X capstone, whose two 15-epoch pilots are explicitly not a
+conclusion. All cited works were verified against publisher, arXiv, or project
+pages in September 2026 unless flagged; no claim is strengthened beyond what
+the cited sources support.
+\end{abstract}
+
+\begin{IEEEkeywords}
+vehicle damage, semantic segmentation, CNN, vision transformer, CNN--transformer
+hybrid, encoder--decoder, attention, mean IoU, uncertainty, confidence
+calibration.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{T}{he} automatic assessment of vehicle exterior damage has been a
+practical computer vision problem for decades: an insurer photographing a claim,
+a used-car inspector, or a driver documenting an incident all need the same
+basic question answered --- \emph{where is the damage and how bad is it?} The
+commercial value is large: automated triage can route the simplest claims to
+low-cost settlement and free human assessors for complex cases. The most recent
+systematic review of the field screened 55 selected papers and grouped methods
+by task (classification, detection, segmentation) and application context
+(insurance claim, traffic, post-accident) \cite{hasan2025}. The picture it
+paints is consistent: damage \textbf{detection} (bounding boxes) and damage
+\textbf{classification} (scratch vs.\ dent vs.\ crack) are mature and saturated;
+damage \textbf{segmentation} (assigning a class label to each damaged pixel) is
+where the field is actively moving, because insurance and inspection applications
+need shape, extent, and location, not just a label. Commercial systems are
+closed-source and do not publish evaluation curves \cite{hasan2025}.
+
+Yet the honest research value is bounded by data. Publicly available datasets
+with pixel-level damage annotations exist (CarDD \cite{cardd2023}, VehiDE
+\cite{vehide2023}, CrashCar101 \cite{crashcar101}), but no public, licence-clear
+dataset carries observed repair \emph{costs}; cost prediction therefore depends
+on private or synthetic sources and is not reproducible ground truth.
+
+Three threads in the wider segmentation literature are directly relevant.
+First, \emph{convolutional} encoder--decoder designs (U-Net \cite{unet2015})
+remain the workhorse for small-data, fine-structure segmentation and are the
+ancestor of most automotive damage segmentation baselines. Second,
+\emph{transformer} and \emph{CNN--transformer hybrid} designs
+\cite{vit2021,setr2021,segformer2021,transunet2021,swin2021} add global context
+that plain convolutions struggle to obtain, which matters when a dent on a door
+and a displaced panel on an A-pillar are physically far apart yet causally
+linked. Third, \emph{uncertainty estimation} \cite{kendall2017,mcdropout2016,
+deepensembles2017} supplies the vocabulary for a system that labels its own
+confidence honestly instead of emitting raw softmax values as if they were
+truth.
+
+This review serves a specific capstone --- \textbf{AutoInspect-X}, a photo-first
+car damage \emph{segmentation} demo with an explicit research question: does a
+CNN+transformer hybrid achieve higher segmentation quality than a plain U-Net
+baseline on CarDD under identical splits, seed, and schedule, and how honestly
+can the models label their own confidence? We restrict the review to verified,
+reproducible sources; claims are separated into what a source states, what is
+inferred from the evidence, and what is a preliminary observation of the
+capstone's own (single-seed, 15-epoch) pilots.
+
+The review is organized as follows. Section~\ref{sec:scope} states the selection
+and integrity method. Section~\ref{sec:metrics} defines the segmentation task and
+the metrics used to compare methods. Section~\ref{sec:data} reviews the verified
+damage datasets. Sections~\ref{sec:cnn}--\ref{sec:hybrid} review the three
+architectural families (convolutional, transformer, hybrid). Section~\ref{sec:uncertainty}
+covers uncertainty and confidence. Section~\ref{sec:gaps} synthesizes the gaps,
+and Section~\ref{sec:pilots} separates literature findings from the capstone's
+own preliminary observations.
+
+\section{Scope and Selection Method}
+\label{sec:scope}
+We follow the selection criterion adopted in the AutoInspect-X research report:
+a work is included if it (i) defines the dataset, baseline, or training rule of
+this project; (ii) is a directly comparable architecture for the research
+question (transformer and hybrid segmentation); or (iii) supplies the
+uncertainty vocabulary that the \emph{honesty contract} relies on. This is a
+targeted review for a bounded capstone, not an exhaustive survey; readers
+interested in a systematic landscape are directed to the systematic review of
+Hasan et al.~\cite{hasan2025}.
+
+Two integrity rules are enforced throughout. First, every citation was checked
+against publisher, arXiv, or project pages during the September 2026 revision of
+the project research report; where a previously-listed dataset could not be
+verified it was excluded (this applies to the unverified ``CDD (2025)'' and
+``Insurance-Damage-v2'' names, which are not used as evidence here). Second, we
+never treat cross-paper numbers as comparable benchmarks: the studies differ in
+dataset version, split policy, pre-processing, and evaluation code, so their
+reported numbers are not directly comparable \cite{cardd2023,hasan2025}.
+
+\section{Segmentation Task and Evaluation Metrics}
+\label{sec:metrics}
+\subsection{Task formulations}
+Automotive damage analysis appears in four formulations that recur across the
+literature \cite{hasan2025}:
+\begin{itemize}
+  \item \textbf{Classification} --- one label per image or per region
+  (scratch, dent, crack, glass shatter, lamp broken, tire flat). Saturated.
+  \item \textbf{Detection} --- bounding boxes per damage instance. Mature.
+  \item \textbf{Semantic / instance segmentation} --- per-pixel class labels
+  (semantic) or per-instance masks (instance). The active front
+  \cite{cardd2023,vehide2023,crashcar101}.
+  \item \textbf{Salient object detection} --- separating ``damaged region'' from
+  background without fine classes; supported by CarDD and VehiDE
+  \cite{cardd2023,vehide2023}.
+\end{itemize}
+AutoInspect-X targets \emph{semantic segmentation} of damage classes from a
+single photo, which is the smallest reproducible formulation that still answers
+``where is the damage and how extensive''.
+
+\subsection{Metrics}
+The standard segmentation metrics descend from the PASCAL VOC evaluation
+protocol \cite{voc2010}. Mean intersection-over-union (mIoU) over classes is the
+primary metric in most damage-segmentation studies \cite{cardd2023,vehide2025}.
+For $C$ classes, with ground-truth pixels $G_c$ and predicted pixels $P_c$ for
+class $c$:
+\begin{equation}
+\mathrm{IoU}_c = \frac{|G_c \cap P_c|}{|G_c \cup P_c|},
+\qquad
+\mathrm{mIoU} = \frac{1}{C}\sum_{c=1}^{C}\mathrm{IoU}_c .
+\label{eq:iou}
+\end{equation}
+The Dice coefficient, closely related to IoU,
+\begin{equation}
+\mathrm{Dice}_c = \frac{2|G_c \cap P_c|}{|G_c| + |P_c|} ,
+\label{eq:dice}
+\end{equation}
+rewards overlap slightly differently (it equals the harmonic mean of
+precision and recall) and is often reported alongside IoU
+\cite{voc2010,cardd2023}. Pixel accuracy --- the fraction of all pixels correctly
+classified --- is simple to compute but is a weak summary when the background
+dominates, which is always true in damage photos.
+
+Four practical warnings about segmentation metrics recur in the literature
+\cite{voc2010,hasan2025} and are adopted by AutoInspect-X:
+\begin{enumerate}
+  \item \textbf{Background dominance.} If the background class is included in
+  the mean, a large, correctly-predicted background can inflate mIoU; the
+  AutoInspect-X protocol therefore reports \emph{foreground-only} means, and
+  absent classes score zero.
+  \item \textbf{Class imbalance.} Most damage classes are rare at the pixel
+  level (a crack is a few thousand pixels in a $512\times512$ image). Mean
+  metrics over classes therefore weigh rare classes equally with common ones,
+  which is desirable but must be stated.
+  \item \textbf{Small-damage slice.} The binding constraint for trust in real
+  claim photos is not the overall mean but the IoU restricted to the
+  \emph{smallest} ground-truth instances. The AutoInspect-X protocol defines a
+  small-damage slice (damage instances at or below the 25th percentile of the
+  training-set instance area) and reports slice IoU/Dice explicitly.
+  \item \textbf{Split discipline.} Cross-paper numbers are not comparable because
+  papers differ in dataset version, split policy, pre-processing, and evaluation
+  code \cite{hasan2025}; within one study, the test split must be touched only
+  once after model selection.
+\end{enumerate}
+\subsection{Task formulations in AutoInspect-X}
+A single-damage photo may contain several instances of several classes. The
+AutoInspect-X protocol uses the CarDD instance masks as \emph{real ground
+truth}, collapses them to a per-pixel semantic label (background or one of the
+six classes) at $512\times512$, and evaluates foreground mIoU \eqref{eq:iou}, Dice
+\eqref{eq:dice}, and pixel accuracy on the official train/val/test splits.
+\section{Vehicle Damage Datasets}
+\label{sec:data}
+Table~\ref{tab:data} summarizes the verified public datasets used across damage
+analysis work that informed this review.
+
+\begin{table}[!t]
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.15}
+\caption{Verified public vehicle-damage datasets relevant to segmentation.}
+\label{tab:data}
+\centering
+\begin{tabular}{@{}p{1.9cm}p{1.1cm}p{1.6cm}p{2.6cm}@{}}
+\toprule
+\textbf{Dataset} & \textbf{Images} & \textbf{Annotation} & \textbf{Verified?}\\
+\midrule
+CarDD \cite{cardd2023} & 4,000 & Polygon instance masks; 6 classes (dent, scratch, crack, glass shatter, lamp broken, tire flat) & Yes\\
+VehiDE \cite{vehide2023} & 13,945 & Detection, segmentation, salient object detection; 8 categories & Yes\\
+\texttt{CrashCar101} \cite{crashcar101} & 101,050 & Synthetic mask; part + damage, severity & Yes\\
+CDA-Net data \cite{cdanet2023} & 11,380 & Damage annotations, Indian market & Yes\\
+Three-quarter-view \cite{threequarter2024} & n/a & Severity classification, \emph{Heliyon} & Yes\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{CarDD --- working dataset of this project}
+CarDD (Wang, Li, Wu, 2023) is the first publicly available large-scale dataset
+for vision-based car damage detection and segmentation: 4,000 high-resolution
+images with over 9,000 annotated instance masks across the six damage classes
+above \cite{cardd2023}. It supports object detection, instance segmentation, and
+salient object detection, and its primary reference model in the original paper
+is Mask~R-CNN \cite{cardd2023,maskrcnn2017}. For AutoInspect-X, CarDD is used
+with its official splits preserved (train 2,816 images / 6,211 instances, val
+810 / 1,744, test 374 / 785 --- measured from a local audit). CarDD contains
+damage masks only: no vehicle-part masks, no vehicle metadata, and no repair
+cost or repair-action annotations. This is why cost prediction is out of scope
+for the project: there is no public cost ground truth to learn from.
+
+\subsection{VehiDE}
+VehiDE \cite{vehide2023} is a publicly released large-scale resource for
+segmenting and detecting automotive damage: 13,945 high-resolution photos with
+more than 32,000 annotated damage instances across eight damage categories. A
+follow-up study benchmarks segmentation methods on it
+\cite{vehide2025}. An important verification note from the report: an earlier
+revision of the project documentation listed ``VeHIDE'' as ``12,000 images, 61
+parts, 26 damage types''; that figure is \textbf{not} supported by the verified
+VehiDE numbers and instead matches the dataset described by the ALBERT model
+paper \cite{albert2025}. The 12,000/61/26 figure is treated as unverified and is
+not used as evidence.
+
+\subsection{CrashCar101 and other resources}
+CrashCar101 \cite{crashcar101} is a procedurally generated dataset of 101,050
+car-crash images with \emph{synthetic} part and damage segmentation masks and
+structural severity levels. Because its imagery is synthetic, it complements
+real datasets as an augmentation or pre-training source, not as real-world
+validation evidence. CDA-Net \cite{cdanet2023} introduces an 11,380-image damage
+dataset from the Indian market together with a YOLOv5-based severity pipeline
+(when published, YOLOv5 itself preceded the YOLOv8 software release discussed in
+Section~\ref{sec:detection}). The three-quarter-view dataset
+\cite{threequarter2024} is a severity-classification resource for whole-car-side
+photos. A multi-view detection model (MVA-CDD, Peng et al., 2025)
+\cite{mvacdd2025} confirms active research interest in multi-view fusion, which
+is beyond this project's single-photo scope.
+
+\subsection{Dataset-family synthesis}
+Four dataset families recur: (i) \emph{real, segmentation-annotated} (CarDD,
+VehiDE) --- verifiable and licence-clear, the only suitable training source for
+this capstone; (ii) \emph{synthetic/procedural with perfect masks}
+(CrashCar101) --- a training complement, not validation evidence; (iii)
+\emph{severity classification} (three-quarter-view; small severity sets); and
+(iv) \emph{closed commercial} (unreleased insurer data, not verifiable).
+
+\subsection{Why CarDD is the working dataset}
+Two properties make CarDD \cite{cardd2023} the defensible working dataset for a
+bounded capstone with a 4~GB GPU. First, it is \emph{verifiable}: the dataset and
+its splits are public, and its annotation schema (polygon instance masks over
+six damage classes) can be audited locally; the AutoInspect-X local audit
+confirms train 2,816/~6,211 instances, val 810/~1,744, test 374/~785. These
+instance counts document a further subtlety: the dataset is \emph{class
+imbalanced} both at image level (dent and scratch predominate) and pixel level,
+so the metrics of \eqref{eq:iou}--\eqref{eq:dice} are reported per class as well
+as aggregated. Second, it is \emph{representative of the regime} the demo
+targets: uncontrolled photographs with thin, spread-out, partly occluded damage.
+VehiDE is a natural future extension for cross-dataset generalization checks
+\cite{vehide2023,vehide2025}, and CrashCar101 \cite{crashcar101} could support
+pre-training or augmentation --- both are explicitly deferred rather than adopted,
+because training on additional data without a documented, licence-reviewed
+protocol would violate the reproducibility rules of the project. Synthetic
+masks, in particular, are a complement for training but never validation
+evidence \cite{crashcar101}.
+
+\subsection{Small-damage framing across datasets}
+All three primary datasets are dominated by small damage instances in realistic
+photos --- a localized dent or a scratch occupies a tiny fraction of the frame.
+The AutoInspect-X protocol therefore treats the small-damage slice as the
+binding constraint (Section~\ref{sec:metrics}, warning 3) rather than as an
+afterthought, and reports slice metrics separately from aggregate metrics. This
+is an explicitly-stated project convention; the literature itself does not
+agree on a standard small-damage definition \cite{hasan2025}.
+
+\section{Convolutional Architectures for Segmentation}
+\label{sec:cnn}
+\subsection{Fully convolutional networks and ResNets}
+Semantic segmentation in deep learning begins with the fully convolutional
+network (FCN), which replaces the fully-connected layers of a classifier with
+transposed-convolution upsampling so the network is trainable end-to-end on
+dense labels \cite{fcn2015}. Backbone capacity is typically provided by residual
+networks (ResNet), whose identity skip connections enable very deep networks
+\cite{resnet2016}. Both are the canonical building blocks of damage-segmentation
+pipelines: a classification backbone that has been turned into a dense-label
+decoder.
+
+\subsection{FCN and ResNet in the encoder--decoder pipeline}
+\begin{figure}[!t]
+\begin{center}
+\begin{tabular}{@{}c@{\ }c@{\ }c@{\ }c@{\ }c@{}}
+RGB input & $\rightarrow$ & Encoder & $\rightarrow$ & mask \\
+$512\times512$ & & 4 stages & & $512\times512$ \\
+ & & (channel \\ & & depth grows) & & 7 classes \\
+\end{tabular}
+\end{center}
+\caption{Broad dataflow of the AutoInspect-X segmentation models: a
+fully-convolutional encoder--decoder with a bottleneck, evaluated by
+\eqref{eq:iou}--\eqref{eq:dice}.}
+\label{fig:fcn}
+\end{figure}
+
+\subsection{U-Net}
+The U-Net \cite{unet2015} is the canonical small-data segmentation architecture:
+an encoder that progressively downsamples while growing channel depth, a
+bottleneck, and a decoder that upsamples back to the input resolution, with
+\emph{skip connections} carrying high-resolution detail from encoder to decoder.
+In its original formulation each stage is a pair of $3\times3$ convolutions
+(double-conv blocks), downsampling is max-pool, and upsampling is a transposed
+convolution; the final layer is a $1\times1$ convolution mapping features to logits
+per pixel. It was designed for biomedical data with limited labels and has become
+the de-facto baseline for damage segmentation because damage photos share that
+regime: few images, small and thin structures of interest. The AutoInspect-X
+baseline (ResNet34UNet, and its earlier CarddUNet predecessor) is a direct
+descendant of this design: the encoder stacks ResNet-derived blocks, and the
+decoder mirrors them with skip connections that concatenate encoder features to
+each upsampling stage.
+
+\subsection{Atrous designs and high-resolution representations}
+DeepLab-style designs generalize convolutions with \emph{atrous} (dilated)
+rates to control the resolution of feature maps and capture multi-scale context
+without losing spatial detail \cite{deeplabv3}. HRNet instead maintains
+high-resolution representations throughout the network by fusing parallel
+multi-resolution branches, explicitly preserving the spatial detail needed for
+thin, spread-out damage \cite{hrnet2020}. For efficiency (relevant to the 4~GB
+GPU constraint of this capstone), MobileNetV2-style inverted-residual bottlenecks
+reduce FLOPs and parameters while retaining representational capacity
+\cite{mobilenetv2}.
+
+\subsection{Instance segmentation: Mask R-CNN}
+Mask~R-CNN extends the Faster-RCNN detection paradigm with a parallel mask
+branch, producing an instance mask per detected object \cite{maskrcnn2017}. It is
+the reference model of the CarDD paper \cite{cardd2023} and the standard
+instance-level baseline in damage work. Instance masks separate individual dents
+or scratches; semantic labels say nothing about which instance a pixel belongs
+to. For damage severity and counting, instance-level information is useful, but
+it requires bounding-box supervision and is heavier than pure semantic
+segmentation.
+
+\subsection{Detection frameworks used in applied damage work}
+\label{sec:detection}
+Applied damage pipelines frequently use YOLO-family detectors. Ultralytics
+YOLOv8 \cite{yolov8} is open-source detection and segmentation software released
+in January 2023; it has \emph{no peer-reviewed paper} and must be cited as a
+software release. YOLO-style dense detectors are typically trained with a focal
+loss that down-weights easy negatives, addressing the extreme background
+dominance of dense detection \cite{lin2017focal}. The focal loss
+\begin{equation}
+\mathrm{FL}(p_t) = -\alpha (1-p_t)^{\gamma}\log(p_t)
+\label{eq:focal}
+\end{equation}
+modulates the standard cross-entropy term by a factor $(1-p_t)^{\gamma}$ that
+shrinks the gradient contribution of well-classified examples ($p_t \to 1$) and
+focusses training on hard, rare foreground pixels; the balance weight $\alpha$
+handles foreground/background class imbalance \cite{lin2017focal}. In
+AutoInspect-X, a raw-PyTorch U-Net/hybrid is preferred over a YOLO pipeline to
+keep the loss, metrics, and class decoding under control on identical splits and
+seeds; a focal-loss variant is a listed alternative that has not been
+adopted, and its use would be recorded in an experiment decision rather than
+assumed.
+
+\subsection{Small-damage-specific considerations}
+Two mechanisms from the reviewed CNN literature are especially relevant to
+thin, spread-out damage: \emph{atrous} (dilated) convolution and
+\emph{high-resolution fusion}. Atrous convolution inserts dilation into the
+kernel so that a fixed-size filter covers a larger receptive field without
+extra parameters, letting multi-scale context be captured at full resolution
+\cite{deeplabv3}. HRNet carries a high-resolution branch through the whole
+network and fuses parallel streams, explicitly preserving the spatial detail
+that thin scratches and hairline cracks occupy \cite{hrnet2020}. Both ideas
+address the same failure mode that dominates under-trained damage models: the
+model collapses small structures into background. In the AutoInspect-X protocol
+this failure is measured directly by the small-damage slice (Section~\ref{sec:metrics},
+warning 3).
+
+\subsection{CNNs, transformers, hybrids: position in this review}
+\begin{table}[!t]
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.15}
+\caption{Representative architectures and their role in a damage-segmentation
+study. Architectural properties are stated as in the cited works; no benchmark
+comparison is implied.}
+\label{tab:arch}
+\centering
+\begin{tabular}{@{}p{2.1cm}p{1.9cm}p{3.4cm}@{}}
+\toprule
+\textbf{Family} & \textbf{Representative} & \textbf{Relevant property}\\
+\midrule
+CNN & FCN \cite{fcn2015}; ResNet \cite{resnet2016} & Dense-label decoding; identity skips\\
+Encoder--decoder CNN & U-Net \cite{unet2015} & Skips preserve fine detail; canonical baseline\\
+Multi-scale (atrous) & DeepLab \cite{deeplabv3}; HRNet \cite{hrnet2020} & Atrous dilation; high-res fusion\\
+Instance & Mask R-CNN \cite{maskrcnn2017} & Per-instance masks; CarDD's reference model\\
+Detection & YOLOv8 \cite{yolov8}; focal loss \cite{lin2017focal} & Applied pipelines; imbalance handling\\
+Transformer encoder & ViT \cite{vit2021}; SETR \cite{setr2021} & Global context; patch sequences\\
+Hierarchical transformer & Swin \cite{swin2021}; SegFormer \cite{segformer2021} & Multi-scale; linearized attention\\
+Hybrid & TransUNet \cite{transunet2021} & Bottleneck attention + CNN decoder\\
+Damage-specific & Mask R-CNN on CarDD \cite{cardd2023}; ALBERT \cite{albert2025}; C-DiffDet+ \cite{cdiffdet2025} & Domain adaptations\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{CNNs, transformers, hybrids: role in this study}
+The baseline of AutoInspect-X is a U-Net-style encoder--decoder; the proposed
+model is a hybrid that inserts a bottleneck transformer. Both are trained with
+softmax cross-entropy over the argmax class target, on identical splits, seed,
+and schedule, and evaluated by \eqref{eq:iou}--\eqref{eq:dice}. No cross-model
+comparative claim is drawn from other papers in this review.
+
+\section{Attention and Global Context}
+\label{sec:attention}
+Self-attention underlies the modern global-context family. The transformer
+architecture \cite{attention2017} computes pairwise relevance between all
+positions of a sequence, enabling direct long-range dependencies. Scaled
+dot-product attention computes, for query $\mathbf{Q}$, key $\mathbf{K}$, and
+value $\mathbf{V}$ matrices,
+\begin{equation}
+\mathrm{Attention}(\mathbf{Q},\mathbf{K},\mathbf{V})
+= \mathrm{softmax}\!\left(\frac{\mathbf{Q}\mathbf{K}^{\mathsf T}}{\sqrt{d_k}}\right)\mathbf{V}
+\label{eq:attention}
+\end{equation}
+where $d_k$ is the key dimension; the $\sqrt{d_k}$ scaling stabilizes the
+softmax as sequences grow. Multi-head attention runs this in parallel across
+several subspaces, allowing the model to attend to different relations
+simultaneously \cite{attention2017}. For images, non-local networks graft a
+self-attention-style block onto conventional CNNs to capture long-range
+dependencies \cite{nonlocal2018}. The Vision Transformer (ViT) \cite{vit2021}
+applies a standard transformer encoder directly to \emph{image patches},
+treating an image as a sequence of patch tokens and relying on large-scale
+pre-training for competitive accuracy.
+
+Two properties matter for damage segmentation. First, attention is
+\textbf{quadratic in the number of tokens}: at $H\times W$ spatial resolution the
+score matrix $\mathbf{Q}\mathbf{K}^{\mathsf T}$ has $(HW)^2$ entries, which is
+why applying global attention to a high-resolution feature map is
+prohibitively expensive. Second, attention is a \emph{mechanism for context},
+not an architecture: it can be a whole encoder (ViT), a localized window (Swin)
+\cite{swin2021}, or a bottleneck module inside a CNN. Where to place it is
+therefore a compute--accuracy trade-off, detailed next.
+
+\section{Vision Transformers for Segmentation}
+\subsection{ViT as an encoder: SETR}
+SETR \cite{setr2021} treats semantic segmentation as a sequence-to-sequence
+problem: a ViT encoder consumes the whole image as a sequence of patches, and a
+decoder upsamples to full resolution. This gives global context but increases
+memory and requires careful training; pure-encoder ViTs also lose the
+multi-scale feature hierarchy that CNNs provide for free.
+
+\subsection{Hierarchical transformers: SegFormer and Swin}
+Hierarchical transformers --- Swin \cite{swin2021} with shifted windows and
+SegFormer \cite{segformer2021} with a positional-encoding-free lightweight
+decoder --- restore a CNN-like multi-scale pyramid. Swin restricts global
+attention to non-overlapping local windows and \emph{shifts} the window grid
+between successive blocks so cross-window relations can propagate layer by
+layer; this replaces the quadratic all-pairs cost of
+\eqref{eq:attention} with cost that is linear in the number of patches.
+SegFormer uses overlapping patch merging, length-agnostic position encoding,
+and an all-MLP decoder, unifying semantic and panoptic segmentation. SegFormer
+was nominated as a candidate vision backbone in earlier AutoInspect-X
+documentation. The trade-off of both hierarchies is realized cost: a full
+hierarchical transformer encoder at high resolution is heavy for a 4~GB GPU,
+which motivates the hybrid designs below.
+
+\subsection{Hybrids as the pragmatic middle ground}
+For a bounded budget, pure-encoder and full-hierarchy definitions bookend the
+design space: a full ViT encoder maximizes context at high cost and loses
+multi-scale features; a plain CNN minimizes cost with local receptive fields
+only. CNN--transformer hybrids split the difference --- the CNN keeps the
+high-resolution hierarchy and the transformer adds global context at a single,
+cheap resolution. This is the family the next section examines.
+
+\section{CNN--Transformer Hybrid Segmentation}
+\subsection{TransUNet}
+TransUNet \cite{transunet2021} is the direct methodological antecedent of the
+AutoInspect-X hybrid. It keeps a CNN encoder for high-resolution features, adds a
+transformer as a \emph{self-attention stage that operates only at the
+bottleneck} (the most downscaled feature map), and then decodes with the
+original skip connections. This is a low-risk, GPU-bounded upgrade: global
+attention is applied where its resolution cost is smallest, while the CNN
+decoder and skips preserve fine detail. The hybrid design of this project
+(CarddHybrid, now superseded by the architecture-spec v3 \emph{HybridSegmentation})
+follows exactly this template.
+
+\subsection{Why bottleneck attention for damage}
+Practical constraints support the bottleneck location over a full ViT encoder for
+this capstone: (a) VRAM budget --- the observed peak is about 2.85~GB for the
+baseline at base~64, and the added transformer capacity must stay within the
+4~GB budget; (b) the CNN decoder's skip connections remain necessary to recover
+small-damage detail; and (c) the transformer needs only the bottleneck's spatial
+resolution (e.g., $32\times32$) to model inter-patch attention, whereas a
+full-patch ViT at $224\times224$ costs far more for the same end goal
+\cite{vit2021}. These are engineering constraints from the project's own
+measurements, not general claims about which location is ``best''.
+
+\subsection{Bottleneck attention in the AutoInspect-X models}
+In the architecture-spec~v3 models, the transformer is a compact encoder stage
+applied to the $32\times32$ bottleneck feature map: sinusoidal positional
+encodings are added to the patch tokens, then residual self-attention layers
+(the head count and depth are fixed in the locked configuration) let tokens mix
+globally, and the result is projected back to a CNN decoder. Because the
+bottleneck token count is small ($32\times32 = 1024$ tokens), the quadratic cost of
+\eqref{eq:attention} stays well within the 4~GB budget. The decoder then
+upsamples with the original skip connections. This is the TransUNet pattern
+\cite{transunet2021} adapted to damage segmentation, and it is the design whose
+preliminary pilots are reported in Section~\ref{sec:pilots}.
+
+\subsection{Transformer-based automotive segmentation}
+Applying transformers directly to automotive damage, ALBERT \cite{albert2025}
+proposes a bidirectional-encoder-based instance segmentation over a large
+annotated automotive dataset (26 real damage types, 7 fake-damage artifacts, 61
+distinct car parts). It is notable for explicitly disambiguating \emph{fake}/
+non-damage artifacts, a real-world nuisance in claim photos. The diffusion-plus-
+detector framework C-DiffDet+ \cite{cdiffdet2025} combines generative inpainting
+for anomaly scoring with a detection stage and a severity classifier, confirming
+a 2024--2025 trend of generative models converging with task-specific detectors.
+
+\section{Uncertainty, Confidence, and Calibration}
+\label{sec:uncertainty}
+\subsection{Types of uncertainty}
+Kendall and Gal \cite{kendall2017} introduced the influential distinction
+between \emph{aleatoric} (data-dependent, irreducible) and \emph{epistemic}
+(model-dependent, reducible) uncertainty in vision. This taxonomy is the
+vocabulary of the AutoInspect-X \emph{honesty contract}: a low-confidence flag
+must read as ``the model itself is uncertain'' (epistemic), not as evidence
+about the vehicle.
+
+\subsection{Practical estimators}
+Two practical epistemic estimators are established: MC dropout \cite{mcdropout2016},
+which keeps dropout active at inference and averages stochastic forward passes
+as an approximate Bayesian marginalization; and deep ensembles
+\cite{deepensembles2017}, which train independently-seeded networks and use the
+variance across members as a predictive uncertainty estimate. Both carry a
+compute price --- $T$ stochastic forward passes or $M$ networks respectively ---
+which is significant on a 4~GB GPU and at demo-time inference. MC dropout is
+comparatively cheap to add to an existing checkpoint (dropout must already exist
+in the network); deep ensembles require multiple training runs, which is exactly
+the multi-seed protocol already planned for the final AutoInspect-X experiment.
+Both remain extensions rather than features of the shipped demo. Independent of
+the estimator, the integrity-relevant property is \emph{calibration}: claimed
+confidence should match observed accuracy. The systematic review
+\cite{hasan2025} notes that commercial damage tools do not publish calibration
+curves; a system that reports softmax mean confidence is only honest if it also
+flags low confidence loudly.
+
+\subsection{The honesty contract}
+AutoInspect-X implements a simpler, deterministic honesty signal --- softmax mean
+confidence plus a \texttt{low\_confidence} flag below thresholds --- rather than
+MC dropout or ensembles, with the stated reason that the demo-grade baseline must
+flag itself honestly and often rather than emit confident-looking numbers. The
+flag is deliberately conservative: thresholds (\texttt{min\_mean\_confidence},
+\texttt{min\_damage\_fraction}) are applied to the deterministic forward pass,
+and the engine labels every mask as MODEL PREDICTION even when confidence is
+high. MC dropout and deep ensembles remain listed extensions and would be adopted
+only via a documented decision. The proposed operational definition of the
+research question on confidence honesty is the \emph{separation} between the
+confidence distribution over images where the predicted mask agrees with CarDD
+ground truth and the distribution where it does not.
+
+\subsection{Calibration as the integrity property}
+Regardless of the uncertainty estimator, the integrity-relevant property is
+\emph{calibration}: the model is calibrated when its reported confidence matches
+its observed accuracy, e.g., images predicted at 90\% mean confidence are correct
+about 90\% of the time. Softmax probabilities are well-known to be
+over-confident for out-of-distribution inputs, so reporting raw softmax confidence
+without a calibration check can mislead a user into treating a guess as a fact.
+None of the commercial damage tools surveyed in the systematic review
+\cite{hasan2025} publish calibration curves; the honesty contract therefore treats
+calibration as a measured, reported property rather than an assumed one.
+
+\section{Research Gaps}
+\label{sec:gaps}
+Triangulating the reviewed evidence supports three gaps \cite{hasan2025,cardd2023,
+vehide2023,albert2025}:
+\begin{enumerate}
+  \item \textbf{Detection and classification are saturated.} The applied
+  literature on damage detection/classification is large; commercial systems are
+  closed-source, and calibration is under-reported.
+  \item \textbf{Segmentation is the active front.} CarDD, VehiDE, CrashCar101,
+  ALBERT, and C-DiffDet+ all indicate that pixel-level and part-level
+  segmentation is where the field is moving \cite{cardd2023,vehide2023,
+  crashcar101,albert2025,cdiffdet2025}.
+  \item \textbf{Confidence honesty is an under-published differentiator.} The
+  defensible, data-real opening is segmentation quality plus a verifiable
+  confidence honesty contract, because public damage datasets supply masks but
+  not financial or vehicle metadata ground truth. Cost prediction, in
+  particular, depends on private datasets or synthetic price rules --- neither is
+  reproducible truth.
+\end{enumerate}
+These gaps jointly argue against the two obvious temptations in automotive
+damage work. The first is to claim \emph{severity or cost}: neither CarDD nor
+any verified public source provides the repair-cost or part-mask ground truth
+needed for an honest cost model. The second is to claim \emph{physical extent}:
+an uncontrolled photograph has no scale reference, so physical area in
+cm$^{2}$ is not defensible; only a normalized image-relative damage-area ratio
+is. Both constraints come from the data, not the method, and they define the
+boundary of the honesty contract.
+
+\section{Design Implications for the Capstone}
+\begin{table}[!t]
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.15}
+\caption{Verified literature matrix: representative works, task, and the claim
+this review uses. Rows beyond the sourced claim are the review's own
+integration, not claims made by the sources.}
+\label{tab:matrix}
+\centering
+\begin{tabular}{@{}p{2.0cm}p{2.0cm}p{3.6cm}@{}}
+\toprule
+\textbf{Work} & \textbf{Task / method} & \textbf{Claim used here (sourced/verified)}\\
+\midrule
+CarDD \cite{cardd2023} & detection + instance seg & First public large-scale car-damage seg dataset; 6 classes; 4000 img / 9k+ inst\\
+VehiDE \cite{vehide2023,vehide2025} & seg + detection + SOD & Public large-scale damage seg dataset; 13,945 img / 32k+ inst / 8 classes\\
+\texttt{CrashCar101} \cite{crashcar101} & part + damage seg & Synthetic masks; complement, not validation\\
+CDA-Net \cite{cdanet2023} & detection + severity & Applied YOLOv5 severity pipeline; 11,380-img damage set\\
+MVA-CDD \cite{mvacdd2025} & multi-view detection & Active multi-view damage research (out of single-photo scope)\\
+Three-quarter view \cite{threequarter2024} & severity classification & Public severity/classification damage resource\\
+C-DiffDet+ \cite{cdiffdet2025} & anomaly + detector + severity & 2024--2025 generative + detector trend\\
+ALBERT \cite{albert2025} & transformer instance seg & Transformer automotive seg with fake-damage disambiguation\\
+U-Net \cite{unet2015} & encoder--decoder seg & Canonical small-data architecture; basis of the baseline\\
+DeepLab \cite{deeplabv3} & seg with atrous conv & Multi-scale context at full resolution\\
+Mask R-CNN \cite{maskrcnn2017} & instance seg & CarDD paper's reference model\\
+HRNet \cite{hrnet2020} & high-res multi-branch & Spatial-detail-preserving backbone\\
+SegFormer \cite{segformer2021} & hierarchical transformer seg & Position-free decoder; proposed vision backbone\\
+TransUNet \cite{transunet2021} & CNN + transformer hybrid & Bottleneck transformer; the hybrid's antecedent\\
+Kendall \& Gal \cite{kendall2017} & uncertainty taxonomy & Aleatoric vs.\ epistemic vocabulary of the honesty contract\\
+MC dropout \cite{mcdropout2016} & epistemic UQ & Test-time dropout uncertainty approximation\\
+Deep ensembles \cite{deepensembles2017} & epistemic UQ & Ensemble-variance uncertainty\\
+Hasan et al. \cite{hasan2025} & systematic review & Confirms saturated detection/classification; rare calibration\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The reviewed evidence translates into a small number of concrete design choices
+for AutoInspect-X, each traceable to a cited source:
+\begin{enumerate}
+  \item \emph{Pixel-level task, foreground metrics.} Segmentation answers
+  ``where and how extensive'' \cite{cardd2023,hasan2025}; foreground-only mIoU
+  and Dice avoid background inflation (Section~\ref{sec:metrics}).
+  \item \emph{Shared baseline and protocol.} A U-Net-style encoder--decoder
+  \cite{unet2015} is the baseline; the hybrid adds a bottleneck transformer
+  following TransUNet \cite{transunet2021}. Identical splits, seed, schedule,
+  loss, and metric harness for both arms is the only honest way to isolate the
+  architecture effect \cite{hasan2025}.
+  \item \emph{Attention cost is bounded.} Global attention at the bottleneck
+  \eqref{eq:attention} costs $O((HW)^2)$ in tokens, which is affordable at
+  $32\times32$ but not at full resolution; the CNN decoder and skips preserve
+  the small-damage detail (Sections~\ref{sec:cnn}, \ref{sec:hybrid}).
+  \item \emph{Imbalance handling.} Sparse-class damage needs either class
+  re-weighting or a focal-style loss \eqref{eq:focal} \cite{lin2017focal};
+  whichever is chosen must be recorded as a decision, not defaulted silently.
+  \item \emph{Honesty is a measured property.} Confidence is reported with a
+  low-confidence flag and the mask is labelled MODEL PREDICTION; calibration and
+  separation are planned measurement targets, not assumptions \cite{kendall2017,
+  mcdropout2016,deepensembles2017}.
+  \item \emph{Reproducibility of records.} Every run records experiment ID,
+  dataset version and split, seed, code and model version, hyperparameters,
+  metrics, and assumptions --- consistent with the reproducibility expectations
+  in the wider damage literature \cite{hasan2025}.
+\end{enumerate}
+These choices are recommendations of this review; where AutoInspect-X has
+departed from a cited practice (for example, preferring a raw-PyTorch model over
+a YOLO pipeline, or reporting a deterministic honesty flag rather than MC
+dropout), the departure is a documented decision in the companion engineering
+documentation, not an accident.
+
+\subsection{Parameter budgets and the 4~GB training constraint}
+Efficiency matters in this capstone for a concrete and non-negotiable reason:
+the training and demo hardware is a 4~GB GPU. The Reviewed literature supplies
+two complementary responses. Architecturally, lightweight designs --- 
+MobileNetV2-style inverted residuals \cite{mobilenetv2} --- trade a small amount
+of accuracy for a large reduction in FLOPs and parameters, and hierarchical
+transformers with windowed attention \cite{swin2021} reduce the quadratic
+attention cost. Procedurally, the budget is respected by placing attention only
+at the bottleneck and by keeping the input at $512\times512$ for both arms. The
+measured engines of the two 15-epoch pilots are within this budget: the baseline
+defined and trained to roughly 24.6M parameters and the hybrid to roughly 27.9M
+parameters (not counts to be compared against any external checkpoint, but the
+two are directly comparable because they share the harness). The observed
+training peak for the earlier base-64 baseline was about 2.85~GB at batch~2;
+the pilot configuration is run within the same memory ceiling. Reporting these
+numbers is a reproducibility requirement \cite{hasan2025}, not an
+architecture claim.
+
+\section{Threats to Validation in the Reviewed Literature}
+Three validation pitfalls recur across the works surveyed here and are worth
+naming explicitly because they are easy to fall into and hard to detect in a
+short review. \emph{Split leakage.} Several damage studies do not state whether
+near-duplicate images of the same vehicle appear across train and test; the
+systematic review flags dataset provenance as a frequent weakness
+\cite{hasan2025}. \emph{Benchmark incomparability.} Papers report numbers on
+different dataset versions, crops, and evaluation code; treating them as a
+leaderboard is unsound. \emph{Overclaiming extent.} Some applied work reports
+damage area or severity as if an uncontrolled photograph were a calibrated
+measurement; without a scale reference or calibration geometry this is not
+defensible. AutoInspect-X treats each of these as a documented protocol
+constraint rather than a review finding.
+
+\subsection{Verification discipline for research-facing claims}
+Two further disciplines apply because this review feeds a project that operates
+under adversarial research-integrity rules. First, the ground-truth policy of
+the project distinguishes REAL GROUND TRUTH (measured/verified by a trusted
+source, e.g., CarDD masks), WEAK LABEL (noisy/indirect), SYNTHETIC LABEL
+(rule/model-generated), DERIVED FEATURE (computed), MODEL PREDICTION (model
+output), and ASSUMPTION (team choice); each claim in this document, and each
+metric reported by the project, falls into exactly one of these categories. This
+is what stops a softmax score in a demo screenshot from being read as verified
+damage evidence, and what keeps the 15-epoch pilot numbers in
+Section~\ref{sec:pilots} from being read as a research conclusion.
+\subsection{Threats to validation in this review}
+The review itself has three limitations. First, it is a targeted review for a
+bounded capstone, not an exhaustive survey; the systematic review of Hasan
+et al.~\cite{hasan2025} should be consulted for coverage. Second, architectural
+claims (``bottleneck attention adds global context'') are stated as the
+mechanisms described by the cited papers, not as benchmark accomplishments; no
+inter-paper comparison is drawn. Third, where the project's own measurements are
+reported (parameter counts, VRAM use, pilot metrics), they are single-run
+observations from one environment and are explicitly not generalized. These
+limitations are intentional and keep the review within what the evidence
+supports.
+
+\section{Preliminary Experimental Observations (AutoInspect-X)}
+\label{sec:pilots}
+\begin{quote}
+\textit{The following subsection is \textbf{not} a literature finding; it is the
+capstone's own preliminary experimental observation and is included only so that
+the reader can relate the review to the companion architecture report. It is
+explicitly \emph{not} a conclusion, and no statistical significance is claimed.}
+\end{quote}
+
+The project migrated from the demo-era \texttt{CarddHybrid} to the
+architecture-spec~v3 research models: a \textbf{baseline} \texttt{ResNet34UNet}
+and the proposed \textbf{HybridSegmentation} (CNN encoder $\rightarrow$
+transformer bottleneck $\rightarrow$ CNN decoder with skips). Two 15-epoch
+\emph{preliminary validation} pilots (seed~0, full official CarDD splits,
+identical schedule, softmax cross-entropy over the argmax class target, EMA
+weights) were run as an intermediate check:
+\begin{itemize}
+  \item \texttt{pilot15\_baseline}: foreground mIoU 0.6127, foreground mDice
+  0.7440, pixel accuracy 0.8979 (best at epoch 14);
+  \item \texttt{pilot15\_hybrid}: foreground mIoU 0.5963, foreground mDice
+  0.7320, pixel accuracy 0.8873 (best at epoch 14).
+\end{itemize}
+Both models were still improving at epoch 14, and neither result establishes
+that either architecture is superior: there is a single seed (0), no statistical
+test, and no fine-tuned schedule. The planned controlled comparison is a
+60-epoch, 3-seed run under the locked protocol, which is required before any
+architecture-level claim. The demo default is \texttt{pilot15\_hybrid} per the
+project plan, with \texttt{pilot15\_baseline} retained as the controlled
+baseline arm. These pilots validate only that both model families train and
+evaluate end-to-end on CarDD under the locked schedule; they are recorded in the
+project registry together with their hyperparameters and seeds for
+reproducibility.
+
+\subsection{Pre-processing and harness}
+The AutoInspect-X harness pre-processes CarDD consistently: images are
+resized/cropped to $512\times512$ RGB, and the instance masks are collapsed to a
+per-pixel class label (background plus the six damage classes), preserving the
+official splits. Training applies horizontal flip and mild brightness/contrast
+augmentation only; validation and test are unaugmented. The two model arms share
+the identical loss (softmax cross-entropy over the argmax class target), the
+Adam optimizer, warm-up, cosine decay, EMA weights, and checkpoint rule (best
+validation foreground mIoU). Recording this protocol verbatim is what makes any
+future claim about one arm versus the other fair \cite{hasan2025}; the pilots
+reported in Section~\ref{sec:pilots} both used it.
+
+\subsection{What the small-damage slice shows}
+The small-damage slice defined in Section~\ref{sec:metrics} is not only a metric
+convention; it is where the practical difficulty concentrates. In the CarDD
+training set, the 25th-percentile instance-area threshold is about 3,013.
+pixels at $512\times512$ (i.e., roughly 1.1\% of the image), a measured baseline
+against which "small" is defined in the project protocol; instances at or below
+this threshold are overwhelmingly dents and scratches --- the two most common
+damage classes in real claims. Because these classes occur at tens of pixels in
+width, a model trained with a plain cross-entropy objective can under-segment
+them entirely, collapsing them into background. The pilot runs do not yet claim
+to have fixed this: the small-damage slice remains the binding constraint on
+trust in both architectures, and it is reported explicitly rather than hidden in
+the aggregate. This measurement is project-specific and is included to
+illustrate why the review repeatedly stresses fine-structure recovery
+mechanisms (U-Net skips, atrous context, high-resolution fusion) rather than
+as a benchmark claim.
+
+\section{Conclusion}
+Vehicle damage segmentation is a reproducible, data-bounded research problem.
+Real, public, mask-annotated datasets exist (CarDD \cite{cardd2023}, VehiDE
+\cite{vehide2023}), synthetic resources (CrashCar101 \cite{crashcar101})
+complement them for training, and calibration/confidence honesty is
+under-published despite being the natural integrity constraint on a photo-first
+inspection system. Architecturally, the evidence supports a CNN--transformer
+hybrid as a GPU-bounded, contemporary upgrade to a U-Net baseline --- attention
+placed at the bottleneck preserves fine detail via the CNN decoder while adding
+global context. The AutoInspect-X pilots confirm only that the two model
+families train on CarDD under the locked schedule; the architecture comparison
+remains to be settled by the planned multi-seed experiment, and the value of the
+system hangs on its honesty contract, not on any single metric.
+
+Three statements summarize the position this review leaves the reader with.
+\textbf{(1) Task selection determines honesty.} A segmentation task on a
+verified, licence-clear dataset (CarDD) is reproducible; severity/cost claims
+are not, because the required ground truth does not exist publicly.
+\textbf{(2) Architecture is an affordable open question.} The CNN--transformer
+hybrid family is contemporary and GPU-bounded; it is answerable in a capstone by
+a locked, multi-seed protocol --- no other paper is needed to establish the
+comparison. \textbf{(3) Confidence labelling is the under-exploited, measured
+contribution.} Reporting a low-confidence flag and measuring
+agreement--disagreement separation converts ``the model was confident'' from a
+marketing sentence into a testable property \cite{kendall2017}. Everything else
+in damage analysis worth doing remains constrained by data that has not yet been
+made public.
+
+\section*{Acknowledgment}
+This review was prepared as part of the AutoInspect-X capstone. The companion
+research report (AutoInspect-X Research Report, September 2026) contains the
+full evidence trail, dataset audits, and decision records referenced here.
+
+\section*{References}
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
