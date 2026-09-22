@@ -45,6 +45,7 @@ from apps.api.shared.schemas import (
 )
 from apps.api.storage.records import ConsentDecision, ImageKind, SessionStatus
 from apps.api.vision.quality import ImageQualityValidator
+from ml.inference.errors import ModelLoadError, ModelVersionError
 from ml.inference.features import extract_features
 from ml.inference.overlay import encode_png, render_overlay
 from ml.inference.preprocess import load_image_rgb
@@ -188,6 +189,12 @@ def analyze_photo(session_id: str, request: Request) -> AnalyzeResponse:
 
     try:
         engine = c.engine()
+    except ModelLoadError as exc:
+        logger.exception("segmentation engine unavailable (MODEL_UNAVAILABLE): %s", exc)
+        _raise(problem(500, APIErrorCode.MODEL_UNAVAILABLE, "model unavailable"))
+    except ModelVersionError as exc:
+        logger.exception("segmentation model version mismatch (MODEL_UNAVAILABLE): %s", exc)
+        _raise(problem(500, APIErrorCode.MODEL_UNAVAILABLE, "model unavailable"))
     except Exception:
         logger.exception("segmentation engine could not be built")
         _raise(problem(500, APIErrorCode.MODEL_UNAVAILABLE, "model unavailable"))

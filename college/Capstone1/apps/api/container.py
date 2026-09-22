@@ -8,6 +8,7 @@ hit ``/analyze`` don't pay the CPU load cost.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,8 +28,28 @@ from apps.api.storage import (
 )
 from ml.inference.engine import SegmentationEngine
 
+logger = logging.getLogger(__name__)
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 _REGISTRY = Path("ml/experiments/registry.json")
 _DEFAULT_CHECKPOINT = Path("ml/experiments/pilot15_hybrid/best_checkpoint.pt")
+
+
+def _norm_path(candidate: Path) -> Path:
+    """Resolve a possibly-relative artefact path regardless of the process CWD.
+
+    Absolute paths are returned unchanged. Relative paths resolve against the
+    current working directory when the file is found there, and otherwise
+    against the repository root — so the backend fails loudly with a concrete
+    path instead of silently pointing at a different directory (e.g. when
+    uvicorn is launched from ``apps/api``).
+    """
+    if candidate.is_absolute():
+        return candidate
+    if candidate.is_file():
+        return candidate.resolve()
+    rooted = (_REPO_ROOT / candidate).resolve()
+    return rooted if rooted.is_file() else (_REPO_ROOT / candidate)
 
 
 def _canon_arch(value: str) -> str:
@@ -70,10 +91,10 @@ def _registry_meta(directory: Path) -> tuple[str | None, float | None, str | Non
     smoke/pilot runs); falls back to the legacy ``best_val_mean_iou``. The third
     element names which key supplied the value.
     """
-    if not _REGISTRY.is_file():
+    if not _norm_path(_REGISTRY).is_file():
         return None, None, None
     try:
-        runs = json.loads(_REGISTRY.read_text())
+        runs = json.loads(_norm_path(_REGISTRY).read_text())
     except json.JSONDecodeError:
         return None, None, None
     prefix = f"{directory.name}-"
@@ -104,9 +125,13 @@ class Container:
     workflow: object
     _engine: SegmentationEngine | None = None
 
+    def resolved_model_path(self) -> Path:
+        """Configured checkpoint path, resolved CWD- and repo-root-independently."""
+        return _norm_path(Path(self.settings.model_path or _DEFAULT_CHECKPOINT))
+
     def engine(self) -> SegmentationEngine:
         if self._engine is None:
-            checkpoint_path = Path(self.settings.model_path or _DEFAULT_CHECKPOINT)
+            checkpoint_path = self.resolved_model_path()
             directory = checkpoint_path.parent if checkpoint_path.is_file() else None
             meta = _registry_meta(directory) if directory else (None, None, None)
             git_revision, iou, iou_key = meta
@@ -131,6 +156,17 @@ class Container:
                     "Per-pixel predictions are preliminary; not verified damage extent.",
                     "Mask-derived severity is 'not currently reliable' for this model.",
                 )
+
+            logger.info(
+                "building segmentation engine: checkpoint=%s exists=%s "
+                "git_revision=%s registry_miou=%s arch=%s base=%s",
+                checkpoint_path,
+                checkpoint_path.is_file(),
+                git_revision,
+                f"{iou:.4f}" if iou is not None else None,
+                arch,
+                base,
+            )
             self._engine = SegmentationEngine.from_checkpoint(
                 checkpoint_path,
                 model_version=self.settings.model_version or None,

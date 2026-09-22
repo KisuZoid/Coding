@@ -47,10 +47,16 @@ ADRs and git log.
   - Honesty flags (`min_mean_confidence`, `min_damage_fraction`) are set per
     checkpoint by the container; demo-default thresholds are conservative.
 - **API/UI defaults:** container default checkpoint = `pilot15_hybrid`;
-  `MODEL_PATH`/`MODEL_VERSION` env overrides (`.env.example`); e2e journeys and
-  integration tests trace the pilot15_hybrid path end-to-end.
+  `MODEL_PATH`/`MODEL_VERSION` env overrides (`.env.example`); `.env` points at
+  `pilot15_hybrid` — **2026-09-22 it had been left pointing at the archived
+  `cardd_hybrid_ce` run, which surfaced as "model unavailable" in the demo.**
+  `container.py` resolves the checkpoint path CWD-/repo-root-independently and
+  logs resolved path + registry metadata; `engine.from_checkpoint` accepts a
+  `model` alias for legacy artefacts; the router classifies load vs. inference
+  failures; the startup lifespan logs a clear error when the checkpoint is
+  missing. New `tests/test_model_integration.py` covers all of this.
 - **Gates (last full run):** ruff clean, mypy clean (86 files), pytest
-  **135 passed**, eslint/tsc/next build clean.
+  **144 passed**, eslint/tsc/next build clean.
 - **Literature review:** `docs/research/literature_review.tex` + `references.bib`
   (30 verified refs), compiled with tectonic → `literature_review.pdf` (10 pp.,
   IEEEtran; `IEEEtran.cls`/`.bst` copied next to the tex for self-contained
