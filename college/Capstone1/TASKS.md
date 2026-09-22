@@ -47,16 +47,30 @@ review compiled.
   `references.bib` (30 verified references), compiled with tectonic
   (IEEEtran.cls + IEEEtran.bst local) → `literature_review.pdf` **10 pages, 0
   errors**; pilot observations clearly separated from literature findings.
+- **Model-integration fix (Task D2).** Root cause of the demo "model
+  unavailable" error: the local `.env` still pinned `MODEL_PATH` /
+  `MODEL_VERSION` to the archived `cardd_hybrid_ce` run; the router hid the
+  real reason. Fixed `.env` → `pilot15_hybrid`; `container.py` now resolves
+  the checkpoint CWD-/repo-root-independently and logs the resolved path +
+  registry metadata; `engine.from_checkpoint` accepts a `model` alias and
+  logs arch/base/epoch/device/params + missing/unexpected keys; the router
+  distinguishes `ModelLoadError`/`ModelVersionError` from generic build
+  failures; a startup lifespan check logs a clear error when the checkpoint
+  is absent. Verified: isolated checkpoint load (0 missing/unexpected keys),
+  API POST with a real CarDD photo (dent/scratch/glass shatter/lamp broken,
+  conf 0.858, overlay), and the real browser UI produced the model overlay.
+  New `tests/test_model_integration.py` (9 tests, 144 total green).
 
 ## In progress
 
 - **Scoped git commits (Task C7).** Multiple reviewable commits under
   `college/Capstone1/...` (never `git add .`).
-- **Final verification report (Task D).** Sections A–H with exact paths/counts.
+- **Final verification report (Task D).** Sections A–I with exact paths/counts.
 
 ## Next recommended task
 
-1. Commit the cleanup/integration and the doc/lit-review changes (Task C7).
+1. Commit the cleanup/integration, doc/lit-review, and model-integration-fix
+   changes (Task C7).
 2. **60-epoch / 3-seed comparison** of `ResNet34UNet` vs `HybridSegmentation`
    on the locked schedule, then lock the RQ2 confidence-honesty operational
    definition and write `research_summary.md`. **This is the blocker for any
@@ -103,6 +117,10 @@ All rows: MEASURED scores from `run_record.json` / `registry.json` (git-ignored)
   are an intermediate check only.
 - `cardd_*` legacy checkpoints load with a base-check guard (research checkpoints
   store `base=0`); engine tolerates both, but mixing is intentionally rejected.
+  **2026-09-22 resolved:** `.env` previously pointed at the archived
+  `cardd_hybrid_ce` checkpoint, causing the demo "model unavailable" error.
+  Now points at `pilot15_hybrid`; path resolution is CWD-independent and the
+  missing-checkpoint reason is logged (see Task D2).
 - Registry entries carry `data_root=/content/data/CarDD_COCO` (training-env
   path); data location is not part of inference resolution.
 

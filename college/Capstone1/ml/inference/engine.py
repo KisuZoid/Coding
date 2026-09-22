@@ -26,6 +26,7 @@ as ``ml/evaluation/evaluate_run.py::forward_main_logits`` does.
 from __future__ import annotations
 
 import base64
+import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, cast
@@ -45,6 +46,8 @@ from ml.models.cardd_hybrid import CarddHybrid
 from ml.models.cardd_unet import CarddUNet
 from ml.models.hybrid_segmentation import HybridSegmentation
 from ml.models.resnet34_unet import ResNet34UNet
+
+logger = logging.getLogger(__name__)
 
 # Honest limits for the current research model (carried for deployments that
 # omit registry metadata). The 15-epoch pilots (seed 0, full CarDD splits)
@@ -231,8 +234,24 @@ class SegmentationEngine:
             checkpoint = torch.load(str(path), map_location="cpu", weights_only=False)
         except Exception as exc:  # any load failure is a loud artefact error
             raise ModelLoadError(f"could not read checkpoint {path}: {exc}") from exc
-        if not isinstance(checkpoint, dict) or "model_state" not in checkpoint:
-            raise ModelLoadError(f"checkpoint lacks the model_state contract: {path}")
+        if not isinstance(checkpoint, dict):
+            raise ModelLoadError(f"checkpoint is not a dict: {path}")
+        state_key = ""
+        for candidate in ("model_state", "model"):
+            if candidate in checkpoint:
+                state_key = candidate
+                break
+        if not state_key:
+            raise ModelLoadError(
+                "checkpoint lacks the model_state contract "
+                f"(neither 'model_state' nor 'model'): {path}"
+            )
+        if state_key != "model_state":
+            logger.warning(
+                "checkpoint %s stores weights under %r; using it as the state dict",
+                path,
+                state_key,
+            )
         arch = checkpoint.get("model_arch")
         arch_name = arch if isinstance(arch, str) else ""
         # `base` is a legacy (Cardd*) channel multiplier; the research
@@ -245,10 +264,16 @@ class SegmentationEngine:
                     f"checkpoint built with base={ckpt_base}, engine configured for base={base}"
                 )
         model = _build_model(arch_name, base=base, num_classes=num_classes)
+        state = cast(dict[str, Any], checkpoint[state_key])
+        missing = [k for k in model.state_dict() if k not in state]
+        unexpected = [k for k in state if k not in model.state_dict()]
         try:
-            model.load_state_dict(cast(dict[str, Any], checkpoint["model_state"]))
+            model.load_state_dict(state)
         except RuntimeError as exc:
-            raise ModelVersionError(f"checkpoint weights disagree with the engine: {exc}") from exc
+            raise ModelVersionError(
+                f"checkpoint weights disagree with the engine ({len(missing)} missing, "
+                f"{len(unexpected)} unexpected keys): {exc}"
+            ) from exc
         epoch = checkpoint.get("epoch")
         metadata = ModelMetadata(
             model_version=model_version,
@@ -260,7 +285,21 @@ class SegmentationEngine:
             git_revision=git_revision,
             arch=model.__class__.__name__,
         )
-        return cls(model, metadata, device=device, baseline_notes=baseline_notes)
+        engine = cls(model, metadata, device=device, baseline_notes=baseline_notes)
+        logger.info(
+            "loaded segmentation checkpoint: path=%s arch=%s base=%s epoch=%s "
+            "classes=%d device=%s params=%d missing=%d unexpected=%d",
+            path.resolve(),
+            metadata.arch,
+            base,
+            metadata.epoch,
+            num_classes,
+            engine._device,
+            sum(p.numel() for p in model.parameters()),
+            len(missing),
+            len(unexpected),
+        )
+        return engine
 
     @property
     def metadata(self) -> ModelMetadata:
@@ -271,6 +310,12 @@ class SegmentationEngine:
         """Segment one RGB uint8 image and return typed, honest output."""
         tensor = preprocess_image(rgb).unsqueeze(0).to(self._device)
         logits = _main_logits(self._model, tensor).squeeze(0).cpu()  # 7x512x512
+        logger.debug(
+            "inference: device=%s input=%s output=%s",
+            self._device,
+            tuple(tensor.shape),
+            tuple(logits.shape),
+        )
         prob = torch.softmax(logits, dim=0).float()
         mask = torch.argmax(logits, dim=0).to(torch.uint8)
         confidence = prob.max(dim=0).values
