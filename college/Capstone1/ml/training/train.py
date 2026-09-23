@@ -116,6 +116,7 @@ class TrainingConfig:
     seed: int = 0
     num_workers: int = 0
     experiment_label: str = "research"
+    resume: Path | None = None
 
 
 class WarmupCosineLR:
@@ -411,6 +412,9 @@ def save_checkpoint(
     best_val_fg_miou: float,
     val: dict[str, Any],
     class_weights: dict[int, float],
+    scaler: Any = None,
+    best_epoch: int = -1,
+    epochs_since_improvement: int = 0,
 ) -> None:
     """Save the artefact using the EMA weights (engine-compatible contract)."""
     ema.apply_shadow(model)
@@ -424,10 +428,16 @@ def save_checkpoint(
             "base": config.base,
             "epoch": epoch,
             "best_val_fg_miou": best_val_fg_miou,
+            "best_epoch": best_epoch,
+            "epochs_since_improvement": epochs_since_improvement,
             "val": val,
             "ema_state": ema.state_dict(),
             "optimizer_state": optimizer.state_dict(),
-            "config": asdict(config),
+            "scaler_state": scaler.state_dict() if scaler is not None else None,
+            "config": {
+                k: str(v) if isinstance(v, Path) else v
+                for k, v in asdict(config).items()
+            },
             "class_weights": class_weights,
             "git_revision": git_revision(),
         },
@@ -440,7 +450,10 @@ def append_registry(registry_path: Path, entry: dict[str, Any]) -> None:
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     data = json.loads(registry_path.read_text(encoding="utf-8")) if registry_path.exists() else []
     data = [*data, entry]
-    registry_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    registry_path.write_text(
+        json.dumps(data, indent=2, default=str),
+        encoding="utf-8",
+    )
 
 
 def parse_args() -> TrainingConfig:
@@ -451,6 +464,12 @@ def parse_args() -> TrainingConfig:
         default="research",
         type=str,
         help="experiment directory under ml/experiments/<label>",
+    )
+    parser.add_argument(
+        "--resume",
+        type=Path,
+        default=None,
+        help="resume training from a checkpoint",
     )
     parser.add_argument(
         "--model",
@@ -524,6 +543,7 @@ def parse_args() -> TrainingConfig:
         seed=args.seed,
         num_workers=args.num_workers,
         experiment_label=args.label,
+        resume=args.resume,
     )
 
 
@@ -585,10 +605,64 @@ def main() -> None:
     best_epoch = -1
     epochs_since_improvement = 0
     early_stopped_at: int | None = None
+    start_epoch = 0
+
+    if config.resume is not None:
+        resume_path = Path(config.resume)
+        if not resume_path.exists():
+            raise FileNotFoundError(f"Resume checkpoint not found: {resume_path}")
+
+        checkpoint = torch.load(
+            resume_path,
+            map_location=device,
+            weights_only=False,
+        )
+
+        if checkpoint.get("model_arch") != config.model_arch:
+            raise ValueError(
+                f"Checkpoint architecture {checkpoint.get('model_arch')!r} "
+                f"does not match requested model {config.model_arch!r}"
+            )
+
+        checkpoint_config = checkpoint.get("config", {})
+        checkpoint_epochs = int(checkpoint_config.get("epochs", config.epochs))
+
+        if checkpoint_epochs != config.epochs:
+            raise ValueError(
+                f"Resume checkpoint was created with epochs={checkpoint_epochs}, "
+                f"but current run requests epochs={config.epochs}. "
+                "Use the same total epoch count when resuming."
+            )
+
+        model.load_state_dict(checkpoint["model_state"])
+        ema.load_state_dict(checkpoint["ema_state"])
+        optimizer.load_state_dict(checkpoint["optimizer_state"])
+
+        if scaler is not None and checkpoint.get("scaler_state") is not None:
+            scaler.load_state_dict(checkpoint["scaler_state"])
+
+        start_epoch = int(checkpoint["epoch"]) + 1
+        best_miou = float(checkpoint.get("best_val_fg_miou", -1.0))
+        best_epoch = int(checkpoint.get("best_epoch", checkpoint["epoch"]))
+        epochs_since_improvement = int(
+            checkpoint.get("epochs_since_improvement", 0)
+        )
+
+        print(
+            f"resuming from {resume_path} "
+            f"(completed through epoch {start_epoch - 1:02d}, "
+            f"best fg-mIoU={best_miou:.4f})"
+        )
+
+        if start_epoch >= config.epochs:
+            raise ValueError(
+                f"Checkpoint is already at epoch {start_epoch - 1}, "
+                f"which reaches the configured maximum of {config.epochs} epochs."
+            )
     if use_cuda:
         torch.cuda.reset_peak_memory_stats()
 
-    for epoch in range(config.epochs):
+    for epoch in range(start_epoch, config.epochs):
         scheduler.step(epoch)
         epoch_start = time.perf_counter()
 
@@ -625,6 +699,9 @@ def main() -> None:
                 best_miou,
                 val,
                 stats.foreground_weights,
+                scaler,
+                best_epoch,
+                epochs_since_improvement,
             )
         else:
             epochs_since_improvement += 1
@@ -640,6 +717,9 @@ def main() -> None:
                 best_miou,
                 val,
                 stats.foreground_weights,
+                scaler,
+                best_epoch,
+                epochs_since_improvement,
             )
 
         epochs_detail.append(
@@ -684,7 +764,10 @@ def main() -> None:
         "ema_decay": config.ema_decay,
         "note": "foreground metrics exclude background; checkpoint holds EMA weights",
     }
-    (out_dir / "run_record.json").write_text(json.dumps(record, indent=2), encoding="utf-8")
+    (out_dir / "run_record.json").write_text(
+        json.dumps(record, indent=2, default=str),
+        encoding="utf-8",
+    )
     append_registry(
         out_dir.parent / "registry.json",
         {
