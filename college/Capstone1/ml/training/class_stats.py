@@ -121,7 +121,7 @@ def get_train_class_stats(
     if path.is_file():
         data = json.loads(path.read_text(encoding="utf-8"))
         if isinstance(data, dict) and data.get("split") == split:
-            return TrainClassStats(
+            stats = TrainClassStats(
                 split=str(data["split"]),
                 class_pixel_counts={int(k): int(v) for k, v in data["class_pixel_counts"].items()},
                 foreground_weights={
@@ -131,6 +131,11 @@ def get_train_class_stats(
                 image_ids=[int(v) for v in data["image_ids"]],
                 sampling_weights=[float(v) for v in data["sampling_weights"]],
             )
+            if (
+                len(stats.image_ids) == len(stats.sampling_weights)
+                and all(1.0 <= w <= 3.0 and math.isfinite(w) for w in stats.sampling_weights)
+            ):
+                return stats
     stats = compute_train_class_stats(data_root, split)
     payload = stats.to_dict()
     payload.update(
