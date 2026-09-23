@@ -9,8 +9,29 @@ ADRs and git log.
 > validation observations, not a research conclusion.** No architecture is
 > claimed superior until the locked 60-epoch / 3-seed comparison completes.
 
-## Current state (2026-09-22)
+## Current state (2026-09-24)
 
+- **Phase-I report delivered (Task E/E2).** `Capstone report/DSN4091 Capstone
+  Project Phase-I Report - Kislay Anand.docx` + `.pdf` (78 pp. A4) generated
+  from the sample-report structure and real repository evidence. Student:
+  Kislay Anand (23BAI10359); supervisor Dr. Rudra Kalyan Nayak.
+  **2026-09-24 final revision pass applied:** front matter (cover, bonafide,
+  acknowledgements, abstract, LOF, TOC) preserved intact; Chapter 3 carries a
+  precise 5-column tech stack with versions read only from repo manifests
+  (requirements-ci.txt, package.json+lock, pyproject.toml, uv.lock); Chapter 4
+  expanded to eight sections (4.4 Data Flow, 4.5 ML/CV Methodology, 4.7
+  Novelty inserted; 4.6 UI renamed) with the real repository folder tree;
+  Chapter 5 pseudo-code replaced by pointers to Appendix B; Appendix B holds 14
+  complete verbatim listings with source path + true line ranges, all
+  wrap-free at the emitted mono size. QC-verified: TOC/LOF page numbers
+  converge (two-pass LibreOffice render), 22 LOF figures with pages, chapters
+  start fresh pages, front-matter roman / body-decimal footers, no secrets,
+  no cost/repair claims, no Underbelly content, no stripped-experiment names
+  (only verbatim engine.py legacy-dispatch lines remain). Pilot numbers quoted
+  verbatim from `run_record.json` (preliminary; see integrity anchor). Report
+  builder script at `/tmp/opencode/revise_report.py` (surgical python-docx
+  edits from `Capstone report/DSN4091 ... .docx`); report content is not
+  maintained in-repo.
 - **Project:** photo-first vehicle damage *segmentation* with an honesty
   contract (MODEL PREDICTION always labelled; no cost/severity/physical-area
   outputs — ADR 0011).
@@ -91,4 +112,5 @@ ADRs and git log.
   archive only after a documented decision that legacy load is dropped.
 - Registry `data_root` points at the training machine path
   (`/content/data/CarDD_COCO`); harmless for inference but not portable metadata.
-- Next recommended step and full tracker: `TASKS.md`.
+- Next recommended step and full tracker: `TASKS.md` (Phase-I report done;
+  next: viva dry-run or the 60-epoch / 3-seed comparison).

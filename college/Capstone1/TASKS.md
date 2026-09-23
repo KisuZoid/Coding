@@ -13,10 +13,14 @@ below); keep it brief and current.
 
 ## Current phase
 
-**Final cleanup + deliverable hardening (Task C).** Repository restored to a
-current, coherent, runnable state: research models integrated as the demo
-default, legacy material archived with provenance, docs re-written, literature
-review compiled.
+**Phase-I report delivered (Task E) and final revision applied (Task E2).**
+Report + PDF delivered under `Capstone report/` and QC-verified (2026-09-23);
+2026-09-24 revision pass (see Completed) delivered the 78 pp. report with
+manifest-pinned tech stack, expanded Chapter 4, and complete verbatim
+Appendix B listings. **Next recommended task:**
+in-person dry-run of the viva (defend the pilot numbers as preliminary, the
+ADR-0011 scope boundary, and the consent flow), or the locked 60-epoch /
+3-seed comparison that upgrades the pilot observations into a conclusion.
 
 ## Completed
 
@@ -64,7 +68,35 @@ review compiled.
   is absent. Verified: isolated checkpoint load (0 missing/unexpected keys),
   API POST with a real CarDD photo (dent/scratch/glass shatter/lamp broken,
   conf 0.858, overlay), and the real browser UI produced the model overlay.
-  New `tests/test_model_integration.py` (9 tests, 144 total green).
+   New `tests/test_model_integration.py` (9 tests, 144 total green).
+- **Phase-I report (Task E — 2026-09-23).** DSN4091 Phase-I report generated
+  from the sample-report structure and real project evidence: `Capstone
+  report/DSN4091 Capstone Project Phase-I Report - Kislay Anand.docx` +
+  `.pdf` (47 pp. A4: cover, bonafide, acknowledgement, abstract, LOF, TOC,
+  Chapters 1–7, Appendices A/B, references). 21 figures (project screenshots +
+  generated workflow/architecture diagrams), 8 code listings, pilot numbers
+  taken verbatim from `run_record.json`; no secrets, no cost/repair claims
+  (ADR 0011), no Underbelly content. Verified: every TOC/LOF page number
+  matches the rendered page, each chapter starts a fresh page, front-matter
+  footers roman / body decimal from 1, no blank/missing-image pages, code
+lines ≤78 chars (no wrap). Build scripts live in `/tmp/opencode/`
+   (`build_report.py`, `parse_pdf.py`, `verify_pdf.py`) — not part of the repo.
+- **Final report revision (Task E2 — 2026-09-24).** Surgical python-docx pass
+   over the delivered DOCX (`/tmp/opencode/revise_report.py`, out-of-repo):
+   front matter (cover/bonafide/ack/abstract/LOF/TOC) preserved byte-identical
+   intent; Chapter 3 tech-stack table rebuilt as precise 5-column
+   Layer | Technology | Version | Purpose | Evidence with versions read only
+   from repo manifests (requirements-ci.txt pins, package.json+lock,
+   pyproject.toml, uv.lock); Chapter 4 expanded to eight sections (4.4 Data
+   Flow, 4.5 ML/CV Methodology, 4.7 Novelty inserted; 4.6 UI renamed) incl. the
+   real folder tree; Chapter 5 pseudo-code replaced with Appendix B pointers;
+   Appendix B = 14 complete verbatim listings (source path + true line range
+   per caption, mono size auto-scaled so no line wraps). Result: **78 pp. A4**,
+   22 LOF figures, TOC/LOF page numbers converged via two-pass LibreOffice
+   render (body offset = physical page 9). Pre-revision backup removed after
+   validation. OLD 47 pp. report superseded; the pre-revision docx is recoverable
+   only from git history if ever needed.
+
 
 ## In progress
 
