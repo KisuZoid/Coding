@@ -49,14 +49,8 @@ from ml.models.resnet34_unet import ResNet34UNet
 
 logger = logging.getLogger(__name__)
 
-# Honest limits for the current research model (carried for deployments that
-# omit registry metadata). The 15-epoch pilots (seed 0, full CarDD splits)
-# reached a foreground mIoU of ~0.613 (baseline) / ~0.596 (hybrid) — intermediate,
-# not a final research conclusion. Several minority classes are not reliably
-# separated at this stage.
 _BASELINE_LIMITATIONS = (
-    "Current research segmentation model (CarDD, 15-epoch pilot, intermediate): "
-    "foreground mIoU ~0.596 to 0.613 measured; not a final research conclusion.",
+    "Segmentation output is a model prediction; it is not verified damage ground truth.",
     "Per-pixel predictions are preliminary; not verified damage extent.",
     "Mask-derived severity is 'not currently reliable' for this model.",
 )
@@ -116,11 +110,13 @@ class ModelMetadata:
     epoch: int | None = None
     git_revision: str | None = None
     arch: str = "cardd_unet"
+    model_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "model_version": self.model_version,
             "experiment_id": self.experiment_id,
+            "model_id": self.model_id,
             "base": self.base,
             "num_classes": self.num_classes,
             "checkpoint_path": self.checkpoint_path,
@@ -214,6 +210,7 @@ class SegmentationEngine:
         checkpoint_path: Path | str,
         *,
         model_version: str | None = None,
+        model_id: str | None = None,
         experiment_id: str | None = None,
         git_revision: str | None = None,
         base: int = 64,
@@ -224,7 +221,7 @@ class SegmentationEngine:
         """Build an engine from a git-ignored, locally present checkpoint.
 
         ``experiment_id`` defaults to the checkpoint's parent directory name
-        (e.g. ``pilot15_hybrid``) so the metadata never mislabels which run an
+        (for example, ``final60_hybrid_seed42``) so the metadata never mislabels which run an
         artefact came from.
         """
         path = Path(checkpoint_path)
@@ -284,6 +281,7 @@ class SegmentationEngine:
             epoch=epoch if isinstance(epoch, int) else None,
             git_revision=git_revision,
             arch=model.__class__.__name__,
+            model_id=model_id or path.parent.name,
         )
         engine = cls(model, metadata, device=device, baseline_notes=baseline_notes)
         logger.info(

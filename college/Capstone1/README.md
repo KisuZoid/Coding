@@ -1,259 +1,183 @@
 # AutoInspect-X
 
-**Photo-first vehicle exterior damage segmentation** — turn a single photograph
-into a pixel-level damage mask and an honest, conversational inspection, while
-keeping every output strictly labelled (MODEL PREDICTION) and never over-claiming
-what an uncontrolled photo can support.
+**Photo-first vehicle exterior damage segmentation** — turn one photograph
+into a pixel-level predicted mask, normalized image-relative damage features,
+confidence flags, and an honest conversational explanation.
 
-> **Status: implemented prototype + research pilots.** FastAPI backend,
-> PyTorch segmentation engine, LangChain-based chat assistant, and Next.js
-> frontend run locally. Two 15-epoch research pilots
-> (`pilot15_baseline`, `pilot15_hybrid`) are trained and wired into the stack.
-> See `RUNBOOK.md` for run instructions.
+Repair-cost and repair-action prediction are out of scope (ADR 0011). The
+overlay is always a **MODEL PREDICTION**; it is not verified physical damage
+extent. No cost, quote, repair-action, hidden-damage, or cm² field is part of
+the product or research claim.
 
----
+> **Status:** implemented photo-first prototype with an explicit five-model
+> runtime catalogue. Four controlled 60-epoch-target runs and one explicitly
+> exploratory continuation are available locally. See `TASKS.md` for the
+> current validation and documentation work.
 
-## Problem
+## Research question
 
-- An insurer, a used-car inspector, or a driver needs: **where is the damage,
-  and how sure can an automated system honestly be?**
-- Public, licence-clear, pixel-annotated data exists (CarDD, VehiDE), but no
-  public dataset carries observed *repair costs* — so cost prediction is not
-  reproducible ground truth and is **out of scope** (ADR 0011).
-- Commercial damage tools are closed-source and do not publish calibration
-  curves; a reproducible, *honesty-contract* baseline is the defensible opening.
+On CarDD, how does a CNN–Transformer hybrid compare with a ResNet34 U-Net
+baseline for damage-segmentation quality and confidence honesty under a shared
+training and evaluation contract?
 
-## Research objective & scope
+The current catalogue provides two controlled seeds (`42` and `1337`) for each
+architecture. It is a controlled two-seed comparison, not a completed
+three-seed experiment. The exploratory `final100_hybrid_seed42` continuation
+is not a matched comparison.
 
-Answer (photo-first scope, ADR 0011):
+## Runtime model catalogue
 
-- **RQ1 — segmentation quality:** does the CNN+Transformer hybrid
-  (`HybridSegmentation`) achieve higher damage-segmentation quality (foreground
-  mIoU, mDice, pixel accuracy, small-damage slice) than the plain U-Net baseline
-  (`ResNet34UNet`) on CarDD under *identical splits, seed, and schedule*?
-- **RQ2 — confidence honesty:** how well does the `low_confidence` /
-  mean-confidence signal separate images where the predicted mask agrees with
-  ground truth from images where it does not? *(Operational definition to be
-  locked.)*
-- **RQ3 — representation honesty:** describe evidence (per-class image-relative
-  area ratios, mask overlays) without claiming physical area, hidden damage,
+The API and frontend use an explicit allowlist. The default is
+`final60_hybrid_seed42` because it is a controlled, measured hybrid checkpoint;
+the incomplete final-100 continuation is never the default.
+
+| Model ID | Architecture | Seed | Status | Best validation foreground mIoU | Best epoch | Record |
+|---|---|---:|---|---:|---:|---|
+| `final60_baseline_seed42` | `ResNet34UNet` | 42 | CONTROLLED | 0.6676585078 | 44 | recorded |
+| `final60_baseline_seed1337` | `ResNet34UNet` | 1337 | CONTROLLED | 0.6681153178 | 50 | recorded |
+| `final60_hybrid_seed42` | `HybridSegmentation` | 42 | CONTROLLED | 0.6701672077 | 49 | recorded; stopped at 59 |
+| `final60_hybrid_seed1337` | `HybridSegmentation` | 1337 | CONTROLLED | 0.6731674075 | 47 | recorded; stopped at 57 |
+| `final100_hybrid_seed42` | `HybridSegmentation` | 42 | EXPLORATORY | 0.6715497971 | 58 | `PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS` |
+
+The final-100 record contains a best checkpoint and periodic evidence observed
+at epochs 54–84, but not the complete continuation history or termination
+reason. It must not be described as a completed 100-epoch run. Exact metrics,
+configuration, and provenance live in each ignored
+`ml/experiments/<model_id>/run_record.json` and in `ml/experiments/registry.json`.
+
+## Product flow
+
+1. The browser creates a session and chooses an available catalogue model.
+2. The user attaches one photo; the upload is validated and EXIF-stripped.
+3. The capture-quality gate rejects poor images with `QUALITY_FAILED` and
+   retake guidance.
+4. The selected engine dispatches from checkpoint `model_arch` metadata and
+   returns a 7-channel argmax mask (background plus six CarDD damage classes).
+5. The API returns/stores predicted classes, image-denominator area ratios,
+   mean confidence, `low_confidence`, quality, model metadata, and an overlay.
+6. The assistant explains only the persisted evidence; follow-up chat remains
+   grounded in that evidence. Consent is optional and never turns a predicted
+   mask into validated ground truth.
+
+## HTTP model selection
+
+```text
+GET  /models
+POST /inspection/session
+     {"model_id": "final60_hybrid_seed42"}
+PATCH /inspection/{session_id}/model
+     {"model_id": "final60_baseline_seed1337"}
+POST /inspection/{session_id}/upload
+POST /inspection/{session_id}/analyze
+```
+
+The selected ID is persisted in session state and returned with analysis. Model
+selection is locked after inspection evidence exists. Unknown IDs return
+`MODEL_NOT_FOUND`; changes after analysis return `MODEL_SELECTION_LOCKED`.
+
+`MODEL_ID` is the normal configuration. `MODEL_PATH` and `MODEL_VERSION` remain
+supported only for deliberate legacy/custom-checkpoint compatibility.
+
+## Architecture
+
+- Baseline: `ml/models/resnet34_unet.py`.
+- Proposed research model: `ml/models/hybrid_segmentation.py` (CNN encoder,
+  bottleneck attention, decoder with skips).
+- Legacy `CarddUNet`/`CarddHybrid` files remain for archive provenance and
+  legacy dispatch; they are not current catalogue defaults.
+- Inference: `ml/inference/engine.py`; architecture-tagged checkpoints dispatch
+  without filename guessing.
+- Training and inference remain separate (ADR 0003); the API does not import
+  training code.
+- Model resolution: `apps/api/model_catalog.py` and `apps/api/container.py`.
+
+## Dataset and evidence labels
+
+CarDD-COCO is the training/evaluation dataset. The locally measured official
+split counts are train `2,816`, validation `810`, and test `374` images. CarDD
+annotations are treated as REAL GROUND TRUTH for segmentation evaluation.
+Areas exposed by the product are DERIVED FEATURES
+(`damaged_pixels / total_image_pixels`); an uncontrolled photograph does not
+support physical area in cm².
+
+Run records and registry entries retain dataset, split, seed, architecture,
+configuration, metrics, and provenance. No training/test mixing or duplicate
+claim is introduced by the runtime catalogue.
+
+## Repository map
+
+```text
+apps/api/          FastAPI routes, catalogue, container, state, assistant
+apps/web/          Next.js photo-first demo and model selector
+ml/models/         ResNet34UNet, HybridSegmentation, legacy Cardd models
+ml/training/       Reproducible training entrypoint and shared pipeline
+ml/inference/      Architecture-aware production inference
+ml/experiments/    Git-ignored checkpoints, run records, registry
+archive/           Superseded docs, code, and experiment provenance
+docs/decisions/    ADRs 0001–0013
+docs/research/     Literature review and research alignment documents
+tests/             API, engine, model-catalogue, and integration tests
+public/            Cinematic frame sequences; scene 4 OCR-audited to 84 live frames
+```
+
+## Running locally
+
+Use the `ai` conda environment for Python/ML commands:
+
+```bash
+conda activate ai
+cp .env.example .env
+uvicorn apps.api.main:app --reload --port 8000
+```
+
+In a second terminal:
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+Set `MODEL_ID=final60_hybrid_seed42` in `.env` (or choose another available
+catalogue model in the UI). Leave the Groq key empty to use the deterministic
+offline assistant. Never commit `.env`.
+
+## Quality gates
+
+```bash
+conda run -n ai python -m pytest tests/
+conda run -n ai ruff check apps/ ml/ tests/ conftest.py
+conda run -n ai ruff format --check apps/ ml/ tests/ conftest.py
+conda run -n ai python -m mypy apps/ ml/ tests/
+cd apps/web && npm run lint -- --max-warnings=0 && npm run typecheck && npm run build
+```
+
+The current change has passed the focused model/API tests, Ruff, mypy, and all
+three frontend static/build gates. The full pytest suite and browser suite are
+still to be rerun after the documentation and deliverable reconciliation.
+
+## Artifact policy
+
+- Active experiment directories keep `best_checkpoint.pt` and
+  `run_record.json` only.
+- `ml/experiments/` and `archive/experiments/` are git-ignored local storage;
+  their registry/run-record IDs are documented rather than weights being
+  committed.
+- Superseded pilot material is archived with provenance.
+- Never commit `*.pt`, `*.pth`, `storage/`, datasets, or `.env`.
+- Removing or restoring any cost-like output requires a new ADR.
+
+## Limitations and next work
+
+- The current controlled catalogue has two seeds, not a completed three-seed
+  comparison.
+- `final100_hybrid_seed42` has a reconstructed partial record; its missing
+  history cannot be recovered from the current artifacts.
+- RQ2 confidence-honesty operational definition and research summary remain
+  pending.
+- The live cinematic scene uses 84 OCR-audited frames; 156 legacy frames containing obsolete repair/cost copy are archived, not served. Direct visual interpretation of the images was unavailable in the current tool environment.
+- Single-photo inference does not establish hidden damage, physical scale,
   repair action, or cost.
 
-**Explicitly out of scope:** repair-cost / repair-action prediction (ADR 0011),
-hidden-damage risk, physical area in cm², multi-view reconstruction.
-
-## Product workflow
-
-Single photo in → honest answer out:
-
-1. **Capture / upload** one photo (type/quality gate).
-2. **Segmentation** runs the engine (512×512 RGB → 7-class logits).
-3. **Evidentiary payload** is produced: predicted mask, per-class
-   image-relative area ratios (DERIVED FEATURE), mean confidence, `low_confidence`
-   flag — every item labelled MODEL PREDICTION.
-4. **Conversational assistant** (LangChain + ChatGroq, with offline stub) grounds
-   a chat narrative in that payload; nothing is asserted beyond it.
-5. **UI** (Next.js) shows the photo, overlay, ratios, flags, and chat; a damage
-   estimate and honesty flags are always visible.
-
-## ML architecture
-
-- **Research models** (spec `docs/architecture/cnn-transformer-segmentation.md`,
-  v3):
-  - Baseline `ResNet34UNet` — `ml/models/resnet34_unet.py`.
-  - Proposed `HybridSegmentation` — CNN encoder → transformer bottleneck
-    (d_model = base×8, 4 heads, 2 layers, sinusoidal position encoding) → CNN
-    decoder with skips — `ml/models/hybrid_segmentation.py`.
-- **Legacy (KEEP, archival):** `ml/models/cardd_hybrid.py` (ADR 0010),
-  `ml/models/cardd_unet.py` (ADR 0006) — still loadable by the engine/train
-  legacy dispatch; see `archive/README.md`.
-- **Harness:** `ml/training/train.py` (`--model baseline|hybrid|cardd_*`),
-  shared loss `ml/training/loss.py`, metrics `ml/evaluation/metrics.py`.
-- **Inference:** `ml/inference/engine.py` — `model_arch` dispatch for
-  `resnet34_unet`/`baseline`, `hybrid`/`hybrid_segmentation`, and legacy
-  `cardd_*`; produces mask + ratios + confidence + flags.
-
-## Current model
-
-- **Demo default:** `ml/experiments/pilot15_hybrid/best_checkpoint.pt`
-  (experiment `pilot15_hybrid`, EXPERT ID `pilot15_hybrid-20260922-115320`,
-  git `fb2fb59`).
-- **Loading:** container reads `MODEL_PATH` / `MODEL_VERSION` (see `.env.example`),
-  resolves the checkpoint from `ml/experiments/`, and pulls provenance
-  (git revision, metric, notes) from `ml/experiments/registry.json`.
-- **Input/output:** 512×512 RGB in → per-pixel logits over 7 classes; mask via
-  argmax; confidence from softmax mean; `low_confidence` below thresholds.
-
-## Baseline
-
-- `pilot15_baseline` (`ResNet34UNet`), same splits/seed/schedule as the hybrid.
-- Legacy records:
-  - `cardd_baseline_ce` (CarddUNet, 5 epochs) — val mIoU 0.0475, SUPERSEDED
-    (underfit).
-  - `pilot15_baseline` — **foreground mIoU 0.6127** / mDice 0.7440 / pixel acc
-    0.8979 @ epoch 14 (MEASURED).
-
-## Dataset
-
-- **CarDD** (Wang, Li, Wu, IEEE TITS 2023, DOI 10.1109/TITS.2023.3258480) —
-  4,000 images / 9,000+ instance masks. Annotation = REAL GROUND TRUTH.
-- Official splits preserved: train 2,816 / val 810 / test 374 (measured locally).
-- Only damage masks exist in CarDD: **no** part masks, vehicle metadata, or cost
-  annotations — a key reason cost prediction is out of scope.
-- Protocol: image-denominator area ratio `damaged_pixels / total_pixels` per
-  class (DERIVED FEATURE); physical cm² is never claimed.
-- Other verified datasets (VehiDE, CrashCar101, CDA-Net, three-quarter-view) are
-  reviewed in `docs/research/literature_review.tex` and cited in the research
-  report, but are **not** used for training.
-
-## Classes
-
-1. Background (0)
-2. Dent (1)
-3. Scratch (2)
-4. Crack (3)
-5. Glass shatter (4)
-6. Lamp broken (5)
-7. Tire flat (6)
-
-Metrics exclude background and are reported per class and as foreground means.
-
-## Current pilot experiments
-
-- **`pilot15_hybrid` — ACTIVE** (`HybridSegmentation`, 15 epochs, seed 0, full
-  official splits): **foreground mIoU 0.5963**, mDice 0.7320, pixel acc 0.8873
-  @ epoch 14; ~27.9M params.
-- **`pilot15_baseline` — SUPERSEDED / retained arm** (`ResNet34UNet`, identical
-  schedule): **foreground mIoU 0.6127**, mDice 0.7440, pixel acc 0.8979 @ epoch
-  14; ~24.6M params.
-- Both use EMA weights, warm-up + cosine decay, class-sampled batches, and the
-  shared softmax-CE loss. **Both were still improving at epoch 14.**
-
-> **Important — do not over-read.** The 15-epoch pilots are *preliminary
-> validation observations* (intermediate check, single seed, no statistical
-> test). They do **not** establish that either architecture is superior. The
-> final comparison is the planned **60-epoch, 3-seed** run (see TASKS.md),
-> which must complete before any architecture-level claim.
-
-## Research status
-
-- Segmentation core, engine, API, UI, and honesty contract: **implemented**.
-- Research comparison RQ1/RQ2: **PARTIAL** — pilots trained and measured; final
-  multi-seed comparison and the RQ2 operational definition are **PLANNED**.
-- Literature review: **done** (`docs/research/literature_review.tex` →
-  `literature_review.pdf`, 10 pp., IEEEtran, 30 verified references).
-- Evidence integrity is governed by `AGENTS.md` (ground-truth categories:
-  REAL GROUND TRUTH / WEAK LABEL / SYNTHETIC LABEL / DERIVED FEATURE /
-  MODEL PREDICTION / ASSUMPTION).
-
-## Repository structure (this project)
-
-```
-apps/
-  api/                  FastAPI service: settings, container (checkpoint
-                        resolution + registry metadata), routes, mocks/stubs,
-                        request/response schemas
-  web/                  Next.js frontend (photo upload, overlay, chat, honesty
-                        flags); e2e Playwright+Codecept journeys
-ml/
-  models/               resnet34_unet.py, hybrid_segmentation.py (+ legacy
-                        cardd_hybrid.py, cardd_unet.py)
-  training/             train.py (baseline|hybrid|cardd_*), loss.py, data.py,
-                        augmentation, checkpointing/EMA/registry writers
-  inference/            engine.py (model_arch dispatch, prediction payload,
-                        honesty flags, experiment resolution)
-  evaluation/           evaluate_run.py, metrics.py, error_analysis.py
-  analysis/             error analysis tooling
-  experiments/          (git-ignored) pilot15_baseline/, pilot15_hybrid/,
-                        registry.json
-docs/
-  decisions/            ADRs 0001–0011 (locked, append-only)
-  architecture/         cnn-transformer-segmentation.md (spec v3), overview.md
-  research/             literature_review.tex/.bib/.pdf, problem-definition.md,
-                        implementation-alignment.md
-  ml/                   ml-engineering-guidelines.md
-tests/                  pytest suite (engine, smoke, e2e integration, legacy)
-archive/
-  docs/                 pinned historical documents (research-scope,
-                        experiment-principles, segmentation-experiment-config,
-                        cost-multimodal-data-readiness, implementation-gap,
-                        CLAUDE_CODE bootstrap)
-  experiments/          (git-ignored) historical experiment dirs + logs
-                        (cardd_baseline_*, cardd_hybrid_ce, phase*, smoke_*)
-  legacy-code/          archived sources (e.g. ml/training/train_smoke.py)
-  README.md             provenance + move register
-storage/models/         (git-ignored) relocated periodic checkpoints
-AUTOinspectX_PROJECT_STATE.md   current-state brief (kept)
-AutoInspect-X_Research_Report_Corrected.md  research report (source of truth
-                        for research claims)
-README.md RUNBOOK.md TASKS.md MEMORY.md LOGIC.md CLAUDE.md AGENTS.md init.md
-IEEE-conference-template-062824/  vendor IEEE LaTeX template (reference)
-```
-
-## Running
-
-Full instructions: **`RUNBOOK.md`** (backend `uvicorn`, frontend
-`npm run dev`, model defaults, troubleshooting).
-
-Quickstart:
-
-```bash
-# backend (ml-ai env)
-cd apps/api && uvicorn main:app --reload
-
-# frontend
-cd apps/web && npm install && npm run dev
-```
-
-- Set `MODEL_PATH` and optional `MODEL_VERSION` in `.env` (see `.env.example`)
-  to override the default checkpoint (`pilot15_hybrid`).
-- Use `MODEL_VERSION=production` to load a pinned registry id explicitly.
-
-## Tests
-
-```bash
-# backend: ruff + mypy + pytest (135 tests as of the last full run)
-ruff check . && mypy .            # ml/, apps/api, tests
-python -m pytest                  # engine, smoke, e2e integration
-
-# frontend
-cd apps/web && npm run lint -- --max-warnings=0 && npm run typecheck && npm run build
-
-# compiled literature review (10 pp., IEEEtran)
-cd docs/research && tectonic literature_review.tex
-```
-
-## Checkpoint storage policy
-
-- Current model artifacts live under `ml/experiments/` (git-ignored; registry is
-  the pointer). `git status` must never show `*.pt`.
-- Large periodic checkpoints live under `storage/models/pilot15_*/` (git-ignored,
-  external storage). `archive/experiments/` holds historical runs/logs.
-- **Never commit `*.pt`, `*.pth`, `storage/`, or `ml/experiments/`.** See
-  `.gitignore`. Git repo root is the parent folder — always scope commits to
-  `college/Capstone1/...`.
-
-## Archive policy
-
-Superseded material goes to `archive/...` **with provenance** (see
-`archive/README.md`), never deleted. Policy map: current research architecture
-and models KEEP live; demo-era / superseded experiments ARCHIVE; generated
-caches and node/test artifacts IGNORE; non-project files EXTERNAL (never `git
-add .`). Removing/restoring cost-like output requires a new ADR (ADR 0011).
-
-## Limitations
-
-- 15-epoch pilots: single seed, no statistical significance — preliminary only.
-- Small-damage slice remains the binding constraint for both architectures.
-- Single uncontrolled photo → no physical scale, no hidden-damage detection, no
-  cost estimates (by design).
-- Synthetic data (CrashCar101-class) is training-only, never validation evidence.
-- Quality gate rejects poor captures (`QUALITY_FAILED`) instead of emitting a
-  fake mask.
-
-## Next steps
-
-See **`TASKS.md`** for the full tracker. Immediate: (1) rewrite trackers
-(done), (2) final scoped git commits, (3) **60-epoch / 3-seed comparison** of
-`ResNet34UNet` vs `HybridSegmentation` and RQ2 confidence-honesty operational
-definition — the blocker for any architecture claim.
+See `TASKS.md`, `MEMORY.md`, `RUNBOOK.md`, ADR 0012, and ADR 0013 for the current
+plan and decision record.

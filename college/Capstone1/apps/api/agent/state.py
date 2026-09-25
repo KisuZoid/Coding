@@ -18,6 +18,7 @@ class ConversationMessage(TypedDict, total=False):
 
 class InspectionState(TypedDict, total=False):
     session_id: str
+    model_id: str
     messages: list[ConversationMessage]
 
     image_asset_id: str | None

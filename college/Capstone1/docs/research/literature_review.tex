@@ -46,11 +46,11 @@ attention for global context; and (iv) uncertainty/confidence estimation
 (aleatoric vs.\ epistemic taxonomy, MC dropout, deep ensembles) as the basis of
 an honesty contract between model predictions and claims. We close with the
 research gaps this evidence supports and clearly-separate \emph{literature
-findings} from the \emph{preliminary experimental observations} of the
-AutoInspect-X capstone, whose two 15-epoch pilots are explicitly not a
-conclusion. All cited works were verified against publisher, arXiv, or project
-pages in September 2026 unless flagged; no claim is strengthened beyond what
-the cited sources support.
+findings} from the current \emph{repository measurements} of the AutoInspect-X
+capstone. The controlled catalogue has two seeds and one exploratory
+continuation; these observations are explicitly not a conclusion. All cited
+works were verified against publisher, arXiv, or project pages in September 2026
+unless flagged; no claim is strengthened beyond what the cited sources support.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -98,11 +98,12 @@ truth.
 This review serves a specific capstone --- \textbf{AutoInspect-X}, a photo-first
 car damage \emph{segmentation} demo with an explicit research question: does a
 CNN+transformer hybrid achieve higher segmentation quality than a plain U-Net
-baseline on CarDD under identical splits, seed, and schedule, and how honestly
-can the models label their own confidence? We restrict the review to verified,
-reproducible sources; claims are separated into what a source states, what is
-inferred from the evidence, and what is a preliminary observation of the
-capstone's own (single-seed, 15-epoch) pilots.
+baseline on CarDD under the recorded split, seed, and training contract, and how
+honestly can the models label their own confidence? We restrict the review to
+verified, reproducible sources; claims are separated into what a source states,
+what is inferred from the evidence, and what is a current repository
+measurement. The current controlled catalogue has two seeds, while the
+100-epoch hybrid record is exploratory and partial.
 
 The review is organized as follows. Section~\ref{sec:scope} states the selection
 and integrity method. Section~\ref{sec:metrics} defines the segmentation task and
@@ -110,8 +111,8 @@ the metrics used to compare methods. Section~\ref{sec:data} reviews the verified
 damage datasets. Sections~\ref{sec:cnn}--\ref{sec:hybrid} review the three
 architectural families (convolutional, transformer, hybrid). Section~\ref{sec:uncertainty}
 covers uncertainty and confidence. Section~\ref{sec:gaps} synthesizes the gaps,
-and Section~\ref{sec:pilots} separates literature findings from the capstone's
-own preliminary observations.
+and Section~\ref{sec:current-observations} separates literature findings from the
+capstone's own current repository measurements.
 
 \section{Scope and Selection Method}
 \label{sec:scope}
@@ -384,9 +385,9 @@ focusses training on hard, rare foreground pixels; the balance weight $\alpha$
 handles foreground/background class imbalance \cite{lin2017focal}. In
 AutoInspect-X, a raw-PyTorch U-Net/hybrid is preferred over a YOLO pipeline to
 keep the loss, metrics, and class decoding under control on identical splits and
-seeds; a focal-loss variant is a listed alternative that has not been
-adopted, and its use would be recorded in an experiment decision rather than
-assumed.
+seeds. The current controlled objective combines foreground soft Dice with
+multiclass Focal (ADR 0013); the cited focal formulation motivates that
+engineering choice, not an independently measured superiority claim.
 
 \subsection{Small-damage-specific considerations}
 Two mechanisms from the reviewed CNN literature are especially relevant to
@@ -431,9 +432,9 @@ Damage-specific & Mask R-CNN on CarDD \cite{cardd2023}; ALBERT \cite{albert2025}
 \subsection{CNNs, transformers, hybrids: role in this study}
 The baseline of AutoInspect-X is a U-Net-style encoder--decoder; the proposed
 model is a hybrid that inserts a bottleneck transformer. Both are trained with
-softmax cross-entropy over the argmax class target, on identical splits, seed,
-and schedule, and evaluated by \eqref{eq:iou}--\eqref{eq:dice}. No cross-model
-comparative claim is drawn from other papers in this review.
+the current deep-supervised Dice + Focal objective and evaluated by
+\eqref{eq:iou}--\eqref{eq:dice}. No cross-model comparative claim is drawn from
+other papers in this review.
 
 \section{Attention and Global Context}
 \label{sec:attention}
@@ -523,15 +524,14 @@ measurements, not general claims about which location is ``best''.
 
 \subsection{Bottleneck attention in the AutoInspect-X models}
 In the architecture-spec~v3 models, the transformer is a compact encoder stage
-applied to the $32\times32$ bottleneck feature map: sinusoidal positional
-encodings are added to the patch tokens, then residual self-attention layers
-(the head count and depth are fixed in the locked configuration) let tokens mix
-globally, and the result is projected back to a CNN decoder. Because the
-bottleneck token count is small ($32\times32 = 1024$ tokens), the quadratic cost of
-\eqref{eq:attention} stays well within the 4~GB budget. The decoder then
-upsamples with the original skip connections. This is the TransUNet pattern
-\cite{transunet2021} adapted to damage segmentation, and it is the design whose
-preliminary pilots are reported in Section~\ref{sec:pilots}.
+applied to the $16\times16$ bottleneck feature map: a learned 2-D positional
+embedding is added to the patch tokens, then four pre-LayerNorm Transformer
+blocks with four heads let tokens mix globally. The result is projected back to
+a CNN decoder. Because the bottleneck token count is small ($16\times16 = 256$
+tokens), the quadratic cost of \eqref{eq:attention} stays well within the 4~GB
+budget. The decoder then upsamples with the original skip connections. This is
+the TransUNet pattern \cite{transunet2021} adapted to damage segmentation; the
+current catalogue observations are reported in Section~\ref{sec:current-observations}.
 
 \subsection{Transformer-based automotive segmentation}
 Applying transformers directly to automotive damage, ALBERT \cite{albert2025}
@@ -701,14 +701,13 @@ of accuracy for a large reduction in FLOPs and parameters, and hierarchical
 transformers with windowed attention \cite{swin2021} reduce the quadratic
 attention cost. Procedurally, the budget is respected by placing attention only
 at the bottleneck and by keeping the input at $512\times512$ for both arms. The
-measured engines of the two 15-epoch pilots are within this budget: the baseline
-defined and trained to roughly 24.6M parameters and the hybrid to roughly 27.9M
-parameters (not counts to be compared against any external checkpoint, but the
-two are directly comparable because they share the harness). The observed
-training peak for the earlier base-64 baseline was about 2.85~GB at batch~2;
-the pilot configuration is run within the same memory ceiling. Reporting these
-numbers is a reproducibility requirement \cite{hasan2025}, not an
-architecture claim.
+current catalogue model definitions report approximately 24.6M parameters for
+\texttt{ResNet34UNet} and 27.9M for \texttt{HybridSegmentation}; these are
+repository engineering counts, not comparisons against external checkpoints.
+An earlier base-64 baseline run recorded a peak of about 2.85~GB at batch size
+2; that historical observation is not a current catalogue-wide memory result.
+Reporting parameter and memory provenance is a reproducibility requirement
+\cite{hasan2025}, not an architecture claim.
 
 \section{Threats to Validation in the Reviewed Literature}
 Three validation pitfalls recur across the works surveyed here and are worth
@@ -733,8 +732,9 @@ source, e.g., CarDD masks), WEAK LABEL (noisy/indirect), SYNTHETIC LABEL
 output), and ASSUMPTION (team choice); each claim in this document, and each
 metric reported by the project, falls into exactly one of these categories. This
 is what stops a softmax score in a demo screenshot from being read as verified
-damage evidence, and what keeps the 15-epoch pilot numbers in
-Section~\ref{sec:pilots} from being read as a research conclusion.
+damage evidence, and what keeps the current two-seed validation measurements
+in Section~\ref{sec:current-observations} from being read as a research
+conclusion.
 \subsection{Threats to validation in this review}
 The review itself has three limitations. First, it is a targeted review for a
 bounded capstone, not an exhaustive survey; the systematic review of Hasan
@@ -742,72 +742,68 @@ et al.~\cite{hasan2025} should be consulted for coverage. Second, architectural
 claims (``bottleneck attention adds global context'') are stated as the
 mechanisms described by the cited papers, not as benchmark accomplishments; no
 inter-paper comparison is drawn. Third, where the project's own measurements are
-reported (parameter counts, VRAM use, pilot metrics), they are single-run
-observations from one environment and are explicitly not generalized. These
-limitations are intentional and keep the review within what the evidence
-supports.
+reported (parameter counts, the historical VRAM observation, and catalogue
+validation metrics), they are repository observations from one environment and
+are explicitly not generalized. These limitations are intentional and keep the
+review within what the evidence supports.
 
-\section{Preliminary Experimental Observations (AutoInspect-X)}
-\label{sec:pilots}
+\section{Current Experimental Observations (AutoInspect-X)}
+\label{sec:current-observations}
 \begin{quote}
-\textit{The following subsection is \textbf{not} a literature finding; it is the
-capstone's own preliminary experimental observation and is included only so that
-the reader can relate the review to the companion architecture report. It is
-explicitly \emph{not} a conclusion, and no statistical significance is claimed.}
+\textit{The following subsection is \textbf{not} a literature finding; it records
+current repository measurements so that the reader can relate the review to
+the companion architecture report. It is explicitly \emph{not} a conclusion,
+and no statistical significance is claimed.}
 \end{quote}
 
-The project migrated from the demo-era \texttt{CarddHybrid} to the
-architecture-spec~v3 research models: a \textbf{baseline} \texttt{ResNet34UNet}
-and the proposed \textbf{HybridSegmentation} (CNN encoder $\rightarrow$
-transformer bottleneck $\rightarrow$ CNN decoder with skips). Two 15-epoch
-\emph{preliminary validation} pilots (seed~0, full official CarDD splits,
-identical schedule, softmax cross-entropy over the argmax class target, EMA
-weights) were run as an intermediate check:
+The current runtime catalogue exposes five explicit entries: two controlled
+seeds for the \texttt{ResNet34UNet} baseline and two controlled seeds for the
+proposed \texttt{HybridSegmentation}, plus one exploratory continuation. The four
+controlled entries use the official CarDD splits, seeds 42 and 1337, a
+60-epoch target schedule, and the current deep-supervised objective: 0.50
+foreground soft Dice plus 0.50 multiclass Focal, with auxiliary weights
+0.75/0.15/0.10 (ADR 0013). The recorded validation foreground mIoU values are:
 \begin{itemize}
-  \item \texttt{pilot15\_baseline}: foreground mIoU 0.6127, foreground mDice
-  0.7440, pixel accuracy 0.8979 (best at epoch 14);
-  \item \texttt{pilot15\_hybrid}: foreground mIoU 0.5963, foreground mDice
-  0.7320, pixel accuracy 0.8873 (best at epoch 14).
+  \item \texttt{final60\_baseline\_seed42}: 0.6676585078 at epoch 44;
+  \item \texttt{final60\_baseline\_seed1337}: 0.6681153178 at epoch 50;
+  \item \texttt{final60\_hybrid\_seed42}: 0.6701672077 at epoch 49;
+  \item \texttt{final60\_hybrid\_seed1337}: 0.6731674075 at epoch 47;
+  \item \texttt{final100\_hybrid\_seed42}: 0.6715497971 at epoch 58.
 \end{itemize}
-Both models were still improving at epoch 14, and neither result establishes
-that either architecture is superior: there is a single seed (0), no statistical
-test, and no fine-tuned schedule. The planned controlled comparison is a
-60-epoch, 3-seed run under the locked protocol, which is required before any
-architecture-level claim. The demo default is \texttt{pilot15\_hybrid} per the
-project plan, with \texttt{pilot15\_baseline} retained as the controlled
-baseline arm. These pilots validate only that both model families train and
-evaluate end-to-end on CarDD under the locked schedule; they are recorded in the
-project registry together with their hyperparameters and seeds for
-reproducibility.
+The first four values are controlled two-seed observations, not a completed
+three-seed study or a statistical-superiority claim. The final-100 entry is an
+exploratory continuation with \texttt{completed: false} and
+\texttt{PARTIAL\_RECONSTRUCTED\_FROM\_CHECKPOINTS}; its available periodic
+metadata spans epochs 54, 59, 64, 69, 74, 79, and 84, but its complete history
+and termination reason are unavailable. The product default is
+\texttt{final60\_hybrid\_seed42}. These are validation measurements, not test-set
+results.
 
 \subsection{Pre-processing and harness}
 The AutoInspect-X harness pre-processes CarDD consistently: images are
 resized/cropped to $512\times512$ RGB, and the instance masks are collapsed to a
 per-pixel class label (background plus the six damage classes), preserving the
-official splits. Training applies horizontal flip and mild brightness/contrast
-augmentation only; validation and test are unaugmented. The two model arms share
-the identical loss (softmax cross-entropy over the argmax class target), the
-Adam optimizer, warm-up, cosine decay, EMA weights, and checkpoint rule (best
-validation foreground mIoU). Recording this protocol verbatim is what makes any
-future claim about one arm versus the other fair \cite{hasan2025}; the pilots
-reported in Section~\ref{sec:pilots} both used it.
+official splits. Training applies the recorded augmentation policy; validation
+and test are unaugmented. The two current model arms share the Dice + Focal
+objective, deep supervision, Adam optimizer, warm-up, cosine decay, EMA weights,
+and checkpoint rule (best validation foreground mIoU). Recording this protocol
+verbatim is what makes a future comparison fair \cite{hasan2025}.
 
 \subsection{What the small-damage slice shows}
 The small-damage slice defined in Section~\ref{sec:metrics} is not only a metric
 convention; it is where the practical difficulty concentrates. In the CarDD
-training set, the 25th-percentile instance-area threshold is about 3,013.
+training set, the 25th-percentile instance-area threshold is about 3,013
 pixels at $512\times512$ (i.e., roughly 1.1\% of the image), a measured baseline
-against which "small" is defined in the project protocol; instances at or below
+against which ``small'' is defined in the project protocol; instances at or below
 this threshold are overwhelmingly dents and scratches --- the two most common
 damage classes in real claims. Because these classes occur at tens of pixels in
 width, a model trained with a plain cross-entropy objective can under-segment
-them entirely, collapsing them into background. The pilot runs do not yet claim
-to have fixed this: the small-damage slice remains the binding constraint on
-trust in both architectures, and it is reported explicitly rather than hidden in
-the aggregate. This measurement is project-specific and is included to
-illustrate why the review repeatedly stresses fine-structure recovery
-mechanisms (U-Net skips, atrous context, high-resolution fusion) rather than
-as a benchmark claim.
+them entirely, collapsing them into background. The current catalogue does not
+yet provide a locked small-damage comparison across its two seeds, so this slice
+remains the binding constraint on trust in both architectures and must be
+reported explicitly. This threshold is project-specific and is included to
+illustrate why the review stresses fine-structure recovery mechanisms (U-Net
+skips, atrous context, high-resolution fusion), not as a benchmark claim.
 
 \section{Conclusion}
 Vehicle damage segmentation is a reproducible, data-bounded research problem.
@@ -818,10 +814,11 @@ under-published despite being the natural integrity constraint on a photo-first
 inspection system. Architecturally, the evidence supports a CNN--transformer
 hybrid as a GPU-bounded, contemporary upgrade to a U-Net baseline --- attention
 placed at the bottleneck preserves fine detail via the CNN decoder while adding
-global context. The AutoInspect-X pilots confirm only that the two model
-families train on CarDD under the locked schedule; the architecture comparison
-remains to be settled by the planned multi-seed experiment, and the value of the
-system hangs on its honesty contract, not on any single metric.
+global context. The current AutoInspect-X catalogue provides a controlled
+two-seed comparison, with a separate exploratory partial continuation; it does
+not establish architecture superiority or a completed multi-seed conclusion.
+The value of the system continues to depend on its honesty contract, not on any
+single metric.
 
 Three statements summarize the position this review leaves the reader with.
 \textbf{(1) Task selection determines honesty.} A segmentation task on a

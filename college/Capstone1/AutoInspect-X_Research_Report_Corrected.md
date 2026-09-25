@@ -18,8 +18,10 @@ metadata → repair action + calibrated cost intervals). That framing was remove
 because it was not backed by real ground truth: CarDD carries no repair-cost,
 repair-action, or vehicle-metadata annotations, and a rule-generated cost table
 is a SYNTHETIC LABEL, not evidence (ADR 0004). The change is recorded in ADR
-0011 (photo-first scope) and ADR 0010 (CarddHybrid model), and this report has
-been rewritten to match the implemented and honest system.
+0011 (photo-first scope), ADR 0010 (CarddHybrid architecture decision), ADR
+0012 (current five-model runtime catalogue), and ADR 0013 (current Dice + Focal
+objective), and this report has been rewritten
+to match the implemented and honest system.
 
 ```
 +---------------------------------------------------------------------------+
@@ -31,8 +33,8 @@ been rewritten to match the implemented and honest system.
 |       v                                                                     |
 |  (PASS)                                                                     |
 |       v                                                                     |
-|  [Damage Segmentation]   CarddHybrid (CNN+Transformer) against             |
-|              \           CarddUNet baseline; argmax over 7 classes          |
+|  [Damage Segmentation]   HybridSegmentation (CNN+Transformer) against     |
+|              \           ResNet34UNet baseline; argmax over 7 classes       |
 |               v                                                            |
 |  [Evidence Payload]   predicted mask + per-class image-denominator area     |
 |       |               ratios (DERIVED FEATURE, not cm2) + confidence +      |
@@ -59,8 +61,9 @@ been rewritten to match the implemented and honest system.
 >    CarDD does **not** contain vehicle metadata, repair actions, or repair cost;
 >    anything built on those would be synthetic and mislabelled as evidence.
 > 3. **Primary Novelty (kept):** a compact bottleneck-transformer segmentation
->    architecture trained end-to-end on CarDD under softmax cross-entropy (ADR
->    0008), with arch-tagged self-describing checkpoints and an engine that
+>    architecture trained end-to-end on CarDD under the current deep-supervised
+>    Dice + Focal objective (ADR 0013), with arch-tagged self-describing checkpoints
+>    and an engine that
 >    refuses to present predicted masks as verified damage.
 
 ## **2\. Scope Change: Why Photo-First**
@@ -87,9 +90,9 @@ cost/repair from scope (ADR 0011, accepted 2026-09-21):
   confidence/low-confidence labelling, consent-gated training samples, LangChain
   ChatGroq explanation (or offline stub), evidence-labelled UI.
 - **Replaced:** the cost/fusion model is replaced by the research core question
-  of this report — whether a **CNN + Transformer hybrid (CarddHybrid)** improves
-  damage-segmentation quality and confidence honesty over the **plain U-Net
-  baseline (CarddUNet)**.
+  of this report — how the current **HybridSegmentation** compares with the
+  **ResNet34UNet** baseline for damage-segmentation quality and confidence
+  honesty under the recorded experiment contract.
 
 ## **3\. AutoInspect-X Problem Definition (Photo-First)**
 
@@ -100,7 +103,7 @@ show our evidence"** — a decision-support system, not a quotation.
 ```
 +--------------------+     +------------------------+     +---------------------+
 | [Photograph]       | --> | [Damage Segmentation]  | --> | [Evidence Payload]  |
-| one uploaded photo |     | 5-stage CNN encoder +  |     | mask / class areas  |
+| one uploaded photo |     | CNN encoder +  |     | mask / class areas  |
 +--------------------+     | transformer bottleneck |     | ratio / confidence  |
                            | + decoder with skips   |     | / overlay / honesty  |
                            +------------------------+     +---------------------+
@@ -165,7 +168,8 @@ public datasets, and grouped methods by task (classification, detection,
 segmentation) and by application context (insurance claim, traffic, post-accident).
 
 Selection criterion for this review: works either (i) define the working dataset
-or baseline of this project (CarDD, U-Net, the CE/argmax training rule), (ii)
+or baseline of this project (CarDD, U-Net, the historical CE/argmax rule, and
+the current Dice + Focal/argmax contract), (ii)
 are directly comparable architectures for the research question (transformer and
 hybrid segmentation), or (iii) supply the uncertainty vocabulary the honesty
 contract relies on. Recent 2025 applied work that reports cross-dataset numbers
@@ -251,9 +255,10 @@ as a training source here.
 
 **U-Net (Ronneberger, Fischer, Brox, 2015)** — *sourced.* The encoder–decoder
 with skip connections [8] is the canonical small-data segmentation architecture
-and the direct ancestor of this project's baseline `CarddUNet` (ADR 0006), which
-implements `_DoubleConv` blocks, max-pool downsampling, transposed-convolution
-upsampling, and skip connects.
+and the direct ancestor of this project's controlled `ResNet34UNet` baseline
+(ADR 0012), which uses a ResNet34 encoder with a shared U-Net-style decoder,
+bilinear upsampling, and skip connections. The older compact `CarddUNet` remains
+legacy provenance only.
 
 **DeepLabv3 (Chen, Papandreou, Schroff, Adam, 2017)** — *sourced.* Atrous
 convolution with multiple dilation rates and an atrous spatial pyramid pooling
@@ -292,10 +297,11 @@ segmentation; the prior report recommended it as a candidate vision backbone
 
 **TransUNet (Chen et al., 2021)** — *sourced.* A medical-image architecture that
 hybridizes CNN and transformer, using the transformer as a self-attention layer
-at the bottleneck before a CNN decoder with skip connections [15]. This is the
-direct methodological antecedent of **CarddHybrid** (ADR 0010): a CNN encoder
-produces downscaled feature maps, a compact transformer attends globally at the
-bottleneck, and the decoder upsamples with the original skips.
+at the bottleneck before a CNN decoder with skip connections [15]. This is a
+direct methodological antecedent of the earlier **CarddHybrid** decision
+(ADR 0010) and the current **HybridSegmentation** implementation: a ResNet34 CNN
+encoder produces feature maps, a compact transformer attends at the bottleneck,
+and the shared decoder upsamples with the original skips.
 
 **ALBERT (Panboonyuen, 2025)** — *sourced.* An automotive-instance-segmentation
 model based on bidirectional encoder representations with multi-branch
@@ -313,22 +319,23 @@ task-specific classifiers for severity are converging in applied damage
 research.
 
 *(inference, this project):* CNN+Transformer hybrids at the bottleneck are a
-standard, low-risk upgrade pattern that addresses a real weakness seen in the
-baseline `cardd_baseline_ce` (val mIoU ~0.0475): a small U-Net underfits and
-misses thin, spread-out damage (FN-dominated; small-damage slice ≈ 0). A global
-attention stage at the 32×32 bottleneck is the chosen way to give the model
-global context without the GPU cost of a full ViT. This is the rationale
-recorded in ADR 0010; it was a working hypothesis, now tested by the trained
-`cardd_hybrid_ce` run (§10 H1) with a weak positive aggregate but no
-small-damage improvement — **evidence, not a settled result**.
+standard, low-risk upgrade pattern that addresses weaknesses observed in the
+early small U-Net runs. A global attention stage at the 16×16 bottleneck is the
+chosen way to give the model global context without the GPU cost of a full
+ViT. The current controlled catalogue uses `ResNet34UNet` and
+`HybridSegmentation`; its validation results are recorded in the dated
+2026-09-25 addendum. The comparison remains **evidence, not a settled
+architecture result**, because the current evidence has two seeds and RQ2 is
+not yet operationally locked.
 
 *(inference, design choice):* Three practical constraints favour the bottleneck
 location over a full ViT backbone or SegFormer encoder for this capstone: (a)
-VRAM budget (the observed peak is 2.85 GB for the U-Net; the hybrid's
-1.7×-bigger parameter count must stay within 4 GB), (b) the CNN decoder's skip
-connections are still needed to recover small-damage detail, and (c) the
-transformer needs only 32×32 spatial resolution at the bottleneck to model
-inter-patch attention; a full-patch ViT at 224×224 is unnecessary cost.
+VRAM budget (the recorded controlled runs peak at 1,883.3 MB for
+`ResNet34UNet` and 2,241.1 MB for `HybridSegmentation`), (b) the CNN decoder's
+skip connections are needed to recover small-damage detail, and (c) the current
+hybrid applies its transformer only at the 16×16 bottleneck; a full-patch ViT at
+224×224 is unnecessary cost. The run records report 24,577,757 baseline and
+27,933,661 hybrid parameters.
 
 ### 5.5 Detection frameworks used in applied damage work
 
@@ -368,11 +375,11 @@ separation rather than as an assumed property of the softmax.
 *(inference, this project):* The implemented engine uses a simpler, deterministic
 honesty signal — softmax mean confidence plus a `low_confidence` flag below
 thresholds (`min_mean_confidence`, `min_damage_fraction`) — rather than MC
-Dropout or ensembles. The stated reason is honest scope: the demonstration-grade
-baseline labels itself "Demo-grade baseline (CarDD, underfit), validation mIoU
-~0.0475" and sets `low_confidence` honestly and frequently. MC Dropout / Deep
-Ensembles remain listed extensions (see §16.6) and would be ADR'd before use, in
-accordance with the ground-truth policy.
+Dropout or ensembles. The active catalogue uses the recorded validation metrics
+in the 2026-09-25 addendum; earlier pilot values are historical and must not be
+used as the current baseline. MC Dropout / Deep Ensembles remain listed
+extensions (see §16.6) and would be ADR'd before use, in accordance with the
+ground-truth policy.
 
 ### 5.7 The research gap this project targets
 
@@ -417,7 +424,7 @@ accordance with the ground-truth policy.
 | ViT [12] | patch-sequence transformer | — | Basis of segmentation transformers |
 | SETR [13] | transformer seg encoder | — | ViT-as-encoder segmentation |
 | SegFormer [14] | hierarchical transformer seg | — | Prior report's suggested vision backbone |
-| TransUNet [15] | CNN+transformer hybrid | — | Bottleneck-transformer hybrid; direct antecedent of CarddHybrid |
+| TransUNet [15] | CNN+transformer hybrid | — | Bottleneck-transformer hybrid; methodological antecedent of the current hybrid |
 | YOLOv8 [16] | detection + seg (software) | — | Open-source software; no peer-reviewed paper |
 | Kendall & Gal [17] | aleatoric vs epistemic UQ | — | Uncertainty taxonomy used by the honesty contract |
 | MC Dropout [18] | epistemic UQ | — | Test-time dropout uncertainty approximation |
@@ -438,11 +445,12 @@ integration of these works into RQ and design, not claims made by the sources.
    *where is the damage and how sure can we be*, not *what will it cost*
    (§9 RQ1/RQ2, ADR 0011).
 2. **The hybrid direction is contemporary and bounded.** TransUNet-style
-CNN+transformer hybrids [15], ALBERT [7], and diffusion-plus-detector
-    frameworks [22] all signal that attention at a bottleneck is an accepted,
-    GPU-bounded upgrade; this is exactly the CarddHybrid design (ADR 0010),
-    now trained and measured (val mIoU 0.0504 / test 0.0586, §10 H1) but still
-    underfit — a hypothesis with first evidence, not a settled result.
+   CNN+transformer hybrids [15], ALBERT [7], and diffusion-plus-detector
+   frameworks [22] all signal that attention at a bottleneck is an accepted,
+   GPU-bounded direction. The current `HybridSegmentation` implementation uses
+   that design under the two-seed controlled contract; its measured values are
+   recorded in the 2026-09-25 addendum, but they do not settle the architecture
+   question.
 3. **Confidence honesty is the differentiator the field does not publish.**
    Detectors and classifiers are saturated (Hasan et al. [20]); calibration and
    failure—flagging are under-reported. The low_confidence flag (§5.6, §16.1) is
@@ -456,8 +464,8 @@ CNN+transformer hybrids [15], ALBERT [7], and diffusion-plus-detector
 |  CarDD, VehiDE, CrashCar101)         |  Kendall & Gal taxonomy)            |
 +------------------+-------------------+------------------+-------------------+
 |  "Where is the   |  ----> proposed contribution ---->   | "How honest can  |
-|   damage?"       |  CNN+Transformer hybrid (CarddHybrid)  |  we be?"         |
-|  (saturated)     |  vs U-Net baseline, with honest labels |  (active)        |
+|   damage?"       |  HybridSegmentation (CNN+Transformer)  |  we be?"         |
+|  (saturated)     |  vs ResNet34UNet, with honest labels |  (active)        |
 +------------------+---------------------------------------+------------------+
 
 - **Saturated sub-domains:** single-image damage classification (scratch vs dent
@@ -502,54 +510,62 @@ CNN+transformer hybrids [15], ALBERT [7], and diffusion-plus-detector
 
 ## **8\. Recommended ML/DL Architecture**
 
-                                  [Input Photo 512x512]
-                                         |
-                                         v
-                         +-------------------------------+
-                         |  CNN Encoder (4 stages)       |
-                         |  base 32 -> 32, 64, 128, 256  |
-                         |  blocks enc1..enc4            |
-                         +---------------+---------------+
-                                         |
-                                         v  (32x32 feature map)
-                         +-------------------------------+
-                         |  Transformer Bottleneck       |
-                         |  d_model = base*8 = 256,      |
-                         |  4 heads, 2 layers,           |
-                         |  sinusoidal pos. encoding     |
-                         +---------------+---------------+
-                                         |
-                                         v
-                         +-------------------------------+
-                         |  CNN Decoder with skips       |
-                         |  dec4/dec3/dec2/dec1          |
-                         |  1x1 head -> 7 classes        |
-                         +---------------+---------------+
-                                         |
-                                         v
-                         +-------------------------------+
-                         |  argmax mask + softmax conf.  |
-                         |  -> Evidence payload +        |
-                         |  low_confidence honesty flag  |
-                         +-------------------------------+
+```text
+                         [Input photo 512x512]
+                                  |
+                                  v
+                    +-----------------------------+
+                    | ImageNet ResNet34 encoder     |
+                    | shared hierarchical skips     |
+                    +--------------+----------------+
+                                   |
+                         C5: 16x16x512
+                                   |
+                    +--------------+----------------+
+                    | Current HybridSegmentation      |
+                    | 1x1 projection + 4-block       |
+                    | 4-head Transformer at 16x16     |
+                    | additive fusion                 |
+                    +--------------+----------------+
+                                   |
+                    +--------------v----------------+
+                    | Shared U-Net-style decoder      |
+                    | deep supervision at 128 and 64  |
+                    +--------------+----------------+
+                                   |
+                    +--------------v----------------+
+                    | 7-class argmax mask + softmax  |
+                    | confidence + low_confidence    |
+                    +-------------------------------+
+```
 
-- **Proposed model `CarddHybrid`** (ADR 0010, `ml/models/cardd_hybrid.py`):
-  CNN encoder → transformer bottleneck → CNN decoder with skips; ~3.2 M params
-  (measured 3,206,855); same contract as the U-Net baseline.
-- **Baseline `CarddUNet`** (ADR 0006, `ml/models/cardd_unet.py`): plain U-Net,
-  same API, ~1.93 M params at base 32 (baseline run used base 64).
-- Both decode with **softmax cross-entropy over the argmax class target** (ADR
-  0008 — the objective and metric decode are identical).
+The controlled baseline uses the same encoder and decoder with a plain 1×1
+projection instead of the Transformer/fusion path. The current objective is
+deep-supervised Dice + Focal (ADR 0013); the older CE decision (ADR 0008)
+belongs to earlier experiments.
+
+- **Current proposed model `HybridSegmentation`**
+  (`ml/models/hybrid_segmentation.py`): ImageNet-pretrained ResNet34 encoder,
+  a four-block four-head Transformer at the 16×16 bottleneck, additive fusion,
+  and the shared U-Net-style decoder with deep supervision; 27,933,661 recorded
+  parameters.
+- **Current controlled baseline `ResNet34UNet`** (`ml/models/resnet34_unet.py`):
+  the same ResNet34 encoder and decoder, with a plain 1×1 bottleneck projection
+  and no Transformer; 24,577,757 recorded parameters.
+- Both current arms use the same training/evaluation contract and the current
+  **deep-supervised Dice + Focal objective** (ADR 0013). The older
+  `CarddHybrid` and `CarddUNet` implementations remain legacy compatibility
+  provenance, not the current comparator pair.
 - **Honesty layer:** the engine labels masks MODEL PREDICTION, attaches measured
   mean confidence, sets `low_confidence` below thresholds, and refuses to claim
   severity or physical area.
 
 ## **9\. Research Questions**
 
-> 1. **RQ1 (segmentation quality):** Does the CNN+Transformer hybrid
->    (`CarddHybrid`) achieve higher damage-segmentation quality (mIoU, Dice,
->    pixel accuracy, small-damage slice) than the plain U-Net baseline
->    (`CarddUNet`) on CarDD, on identical splits, seed, and training schedule?
+> 1. **RQ1 (segmentation quality):** How do `HybridSegmentation` and
+>    `ResNet34UNet` compare on CarDD validation mIoU, Dice, pixel accuracy, and
+>    the small-damage slice under the recorded two-seed contract? The catalogue
+>    values are measurements, not a claim of superiority.
 > 2. **RQ2 (confidence honesty):** How honestly can the models label their own
 >    confidence — how well does the `low_confidence` / mean-confidence signal
 >    separate images where the predicted mask agrees with CarDD ground truth
@@ -566,98 +582,94 @@ outside SYNTHETIC LABEL.
 
 ## **10\. Hypotheses**
 
-* **H1 (tested, 2026-09-21, `cardd_hybrid_ce`):** `CarddHybrid` improves
-  validation mean IoU over the `cardd_baseline_ce` numbers (val mIoU 0.0475,
-  MEASURED) on the same schedule. Measured after a 5-epoch run on the same
-  harness: **val mIoU 0.0504 / test mIoU 0.0586** (MEASURED, `registry.json`
-  id `cardd_hybrid_ce-20260921-162128`). That is a weak positive on the
-  aggregate, but the hybrid remains clearly underfit and the small-damage
-  slice is ≈ 0; the model is **not** presented as ready damage evidence.
+* **H1 (current controlled question, not yet concluded):** under the recorded
+  two-seed contract, how do `ResNet34UNet` and `HybridSegmentation` compare on
+  validation foreground mIoU and the small-damage slice? The current measured
+  values are listed in the 2026-09-25 catalogue addendum. They do not establish
+  superiority or a statistical conclusion.
+* **H1-legacy (historical, 2026-09-21):** the early `cardd_hybrid_ce` and
+  `cardd_baseline_ce` runs produced a weak aggregate contrast under a separate
+  five-epoch harness. Those runs are archived and do not define the current
+  controlled arms.
 * **H2 (method, not result):** small-damage IoU (slice ≤ train p25 ≈ 3,013.5 px
-  @512, MEASURED) is the binding constraint on damage-feature trust for both
-  architectures; improvements should be reported on that slice explicitly.
-  Measured slice IoU for the hybrid: val 0.0002 / test 0.0003 — the constraint
-  binds for both architectures.
+  @512, MEASURED) is the binding constraint on damage-feature trust; it must be
+  reported explicitly for every current arm.
 * **H3 (open):** whether the hybrid's added capacity changes the honesty
-  trade-off (precision vs confidence) is an empirical question, not a prior.
+  trade-off between confidence and error is an empirical question, not a prior.
 
-> **Addendum — 2026-09-22 15-epoch pilots (preliminary validation, not a
-> conclusion).** The legacy `cardd_hybrid_ce` demo checkpoint is superseded by
-> the architecture-spec v3 research models. Two 15-epoch pilots (seed 0, full
-> official CarDD splits, identical schedule) were run as an intermediate check:
-> `pilot15_baseline` (`ResNet34UNet`) reached **foreground mIoU 0.6127 /
-> mDice 0.7440 / pixel accuracy 0.8979**, and `pilot15_hybrid`
-> (`HybridSegmentation`) reached **foreground mIoU 0.5963 / mDice 0.7320 /
-> pixel accuracy 0.8873** (@ epoch 14, both still improving; EMA weights; seeds
-> 0/1/2 not yet run). These are preliminary validation observations only — they
-> do **not** establish that either architecture is superior, and no statistical
-> significance is claimed. The planned full comparison remains the 60-epoch,
-> 3-seed experiment (Task 24). The demo default is `pilot15_hybrid` per the
-> research plan; `pilot15_baseline` is retained as the controlled baseline arm.
+> **Historical addendum — 2026-09-22 15-epoch pilots (superseded).** These
+> pilots were an intermediate check and are retained only as historical
+> provenance. They are not current catalogue entries, current defaults, or
+> evidence of architecture superiority. The active five-model catalogue and
+> the partial final-100 record are documented in the 2026-09-25 addendum at
+> the end of this report.
 
 ## **11\. Baselines**
 
-> 1. **Baseline 1 (vision-only segmentation, current):** `CarddUNet` trained
->    with softmax CE on CarDD (5 epochs, seed 0, official splits) — best val
->    mIoU 0.0475 / test 0.0500 (MEASURED, underfit).
-> 2. **Baseline 2 (same harness, more epochs):** the U-Net extended beyond 5
->    epochs on the same harness, to separate "architecture effect" from
->    "underfitting effect" before comparing with the hybrid.
-> 3. **Proposed / measured contrast (A3):** `CarddHybrid` trained under the same
->    harness, schedule, seed, and split policy. Measured val mIoU 0.0504 /
->    test mIoU 0.0586 (see H1 above). The hybrid narrowly beats the CE
->    baseline on aggregate; several minority classes remain at IoU 0.
-
-Former baselines ("object detector + fixed heuristic cost", "vision + MLP
-concat + metadata", "cross-attention fusion") are removed with the cost scope.
+> 1. **Controlled baseline:** `ResNet34UNet` under the 60-epoch target
+>    schedule, with seeds 42 and 1337. Best validation foreground mIoU is
+>    0.6676585078 (seed 42) and 0.6681153178 (seed 1337).
+> 2. **Controlled hybrid:** `HybridSegmentation` under the same schedule and
+>    split policy, with seeds 42 and 1337. Best validation foreground mIoU is
+>    0.6701672077 (seed 42) and 0.6731674075 (seed 1337).
+> 3. **Exploratory continuation:** `final100_hybrid_seed42` is recorded as
+>    `PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS`; it is not a matched baseline or
+>    a completed 100-epoch result.
+>
+> These are two available seeds, not a completed three-seed study. No
+> architecture-superiority or statistical-significance claim is made. The
+> earlier `cardd_hybrid_ce`/`cardd_baseline_ce` measurements belong to a
+> separate historical harness and are not substituted for the current records.
 
 ## **12\. Experimental Design**
 
-The locked configuration in `archive/docs/segmentation-experiment-config.md`
-(Phase 6, historical) governs the original baseline; the architecture spec
-`docs/architecture/cnn-transformer-segmentation.md` (v3) supersedes it, and the
-15-epoch pilot runs record their own (identical-schedule) config per experiment:
+The active experimental design is the explicit five-model catalogue defined in
+ADR 0012. The four controlled entries use the same architecture comparison
+under seeds 42 and 1337 and a 60-epoch target schedule. The fifth entry is an
+exploratory continuation and is excluded from matched comparisons.
 
 | Item | Value |
 |---|---|
 | Dataset / splits | CarDD-COCO official train/val/test (2,816 / 810 / 374) |
-| Input | RGB 512×512, batch 2 (VRAM-measured: base 64 @ batch 2 = 2.85 GB peak) |
-| Loss | softmax cross-entropy over argmax class target (ADR 0008) |
-| Optimizer / scheduler | Adam lr 1e-3, wd 1e-5; CosineAnnealingLR |
-| Augmentation (train only) | hflip + mild brightness/contrast; none on val/test |
-| Seed / epochs | seed 0; 5 epochs (extendable on the same harness) |
-| Checkpoint rule | best validation mean IoU; checkpoint carries `model_arch` |
-| Test protocol | test197 split evaluated once, after selection |
-| Records | `run_record.json` + `registry.json` (git-ignored); commit docs reference IDs |
+| Input | RGB 512×512; batch/accumulation recorded per run |
+| Objective | 0.50 foreground soft Dice + 0.50 multiclass Focal; deep supervision 0.75/0.15/0.10 (ADR 0013) |
+| Models | `ResNet34UNet` baseline; `HybridSegmentation` proposed |
+| Controlled seeds | 42 and 1337 |
+| Controlled target | 60 epochs; early stopping may end a run earlier |
+| Exploratory entry | `final100_hybrid_seed42`, partial reconstructed record |
+| Checkpoint rule | Best validation foreground mIoU; checkpoint carries `model_arch` |
+| Records | `run_record.json` + `registry.json` (git-ignored) |
+| Test protocol | Test split is evaluated only after checkpoint selection |
 
-Trail: `cardd_hybrid_ce` (ACTIVE, trained 2026-09-21, val mIoU 0.0504 /
-test mIoU 0.0586) has been compared against `cardd_baseline_ce` (SUPERSEDED).
-The written `research_summary.md` for the head-to-head is still pending; the
-claim level above is limited to the MEASURED numbers.
+The current values and record-status caveats are in the 2026-09-25 addendum.
+The old `archive/docs/segmentation-experiment-config.md` and early CardDD
+runs remain historical provenance only. A current `research_summary.md` and
+the RQ2 operational definition are still pending.
 
 ## **13\. Ablation Study Design**
 
 +-----+----------------------------------------------+--------------------------+
 | Exp | Configuration                                 | Target insight           |
 +-----+----------------------------------------------+--------------------------+
-| A1  | CarddUNet, 5 ep (existing `cardd_baseline_ce`) | Baseline reference       |
-| A2  | CarddUNet, extended schedule                  | Underfit vs architecture |
-| A3  | CarddHybrid, same schedule as A1              | Hybrid effect (isolate)  |
-|     |                                            — (DONE 2026-09-21: val mIoU 0.0504, test 0.0586) |
-| A4  | CarddHybrid, extended schedule                | Best affordable run      |
-| A5  | (optional) transformer bottleneck ablated     | Contribution of attention|
+| B42 | `ResNet34UNet`, seed 42, 60-epoch target      | Controlled baseline      |
+| B1337| `ResNet34UNet`, seed 1337, 60-epoch target   | Controlled baseline      |
+| H42 | `HybridSegmentation`, seed 42, 60-epoch target| Controlled hybrid        |
+| H1337| `HybridSegmentation`, seed 1337, 60-epoch target | Controlled hybrid     |
+| E100| `HybridSegmentation`, seed 42, 100-epoch target | Exploratory only        |
 +-----+----------------------------------------------+--------------------------+
 
-Each ablation: same splits, seed, metric harness, honesty flags. No ablation is
-claimed until its run exists in the registry.
+The four controlled runs use the recorded split, metric harness, and seed
+contract; they are not a completed three-seed study. E100 has a partial
+reconstructed record and is not a matched comparison arm. No architecture
+ablation is claimed beyond the measured run records.
 
 ## **14\. Evaluation Metrics**
 
 +----------------------------+-----------------------+-------------------------------+
 | Task / Module              | Primary Metric        | Secondary Metric              |
 +----------------------------+-----------------------+-------------------------------+
-| Damage segmentation        | val/test mean IoU     | per-class IoU/Dice, mDice     |
-| Small-damage slice         | slice IoU (≤ p25)     | slice Dice / P / R            |
+| Damage segmentation        | validation foreground mIoU | per-class IoU/Dice, mDice; test only when separately run |
+| Small-damage slice         | slice IoU (≤ p25), pending current extraction | slice Dice / P / R |
 | Pixel-level discrimin.     | pixel accuracy        | per-class precision/recall    |
 | Confidence honesty (RQ2)   | agreed-vs-disagreed   | low-flag rate; separation     |
 |                            | confidence separation | (operational metric, RQ2)     |
@@ -672,9 +684,10 @@ because no such task exists.
 > 1. **Domain shift & capture quality:** glare, blur, darkness, low contrast can
 >    fail the quality gate or degrade masks — the gate exists, and its rejection
 >    path returns `QUALITY_FAILED` guidance rather than a fake mask.
-> 2. **Underfitting / small damage:** the 5-epoch baseline misses most small
->    damage (slice ≈ 0, MEASURED); both models are expected to underperform on
->    crack/dent until trained properly.
+> 2. **Underfitting / small damage:** the current controlled run records report
+>    aggregate foreground metrics but do not contain a separate small-damage
+>    slice field. The slice metric remains required for the current RQ1/RQ2
+>    analysis; the earlier 5-epoch slice result is historical only.
 > 3. **No physical ground truth:** one uncontrolled photo has no scale; physical
 >    area (cm²), hidden damage, repair action, and cost are permanently out of
 >    scope unless real labelled data arrives (ADR 0004/0011).
@@ -719,20 +732,22 @@ reported.
   (2026-09-07) + `AUTOINspectX_PROJECT_STATE.md` + this repo.
 - **Demo product:** complete to Phase R (photo-first chat UI + API + engine +
   storage + CI), with the honesty contract enforced by tests.
-- **Academic experiment:** `cardd_hybrid_ce` trained and verified end-to-end
-  2026-09-21 (val mIoU 0.0504 / test mIoU 0.0586, MEASURED). The head-to-head
-  `research_summary.md` and the RQ2 operational definition remain open; no
-  publication-facing quality claim is made beyond the measured numbers. Not
-  submitted anywhere (UNVERIFIED / not claimed).
+- **Academic experiment:** the current controlled catalogue has two seeds for
+  each architecture; the measured values and record statuses are listed in the
+  2026-09-25 addendum. The exploratory final-100 continuation is partial. The
+  head-to-head `research_summary.md` and RQ2 operational definition remain
+  open; no publication-facing superiority claim is made. Not submitted
+  anywhere.
 
 ## **18\. Recommended Final Scope**
 
 Focus the student capstone on **single-photo passenger-vehicle exterior damage
-segmentation**, comparing a **CNN+Transformer hybrid (CarddHybrid)** against the
-**plain U-Net baseline (CarddUNet)** on the CarDD dataset under a locked,
-reproducible schedule, evaluated on segmentation quality **and** confidence
-honesty, and presented through a photo-first chat demo whose interface separates
-MODEL PREDICTION from anything else.
+segmentation**, comparing the current `HybridSegmentation` against
+`ResNet34UNet` on CarDD under the recorded schedule, evaluated on segmentation
+quality and confidence honesty, and presented through a photo-first chat demo
+whose interface separates MODEL PREDICTION from anything else. The final-100
+continuation is exploratory and must not be presented as a completed matched
+experiment.
 
 ## **19\. Final Verdict**
 
@@ -816,3 +831,35 @@ pages unless flagged:
 12,000-image / 61-part / 26-damage dataset as previously listed could not be
 verified; its damage/part counts coincide with ALBERT's dataset description [7].
 "Insurance-Damage-v2" — no academic citation could be verified.
+
+## Addendum — 2026-09-25 five-model catalogue and controlled run records
+
+The runtime model catalogue is now explicit and allowlisted under ADR 0012.
+It contains four controlled 60-epoch-target runs using two available seeds
+(`42`, `1337`) and one exploratory continuation. The controlled records identify
+code revision `591d7d2`; that trainer uses the Dice + Focal objective documented
+in ADR 0013, rather than the historical CE path in ADR 0008. The objective is
+not a separate field in the existing run-record schema and is therefore
+provenance-linked, not silently inferred from a metric.
+
+| Model ID | Architecture | Status | Best validation foreground mIoU | Best epoch | Record state |
+|---|---|---|---:|---:|---|
+| `final60_baseline_seed42` | `ResNet34UNet` | CONTROLLED | 0.6676585078 | 44 | recorded |
+| `final60_baseline_seed1337` | `ResNet34UNet` | CONTROLLED | 0.6681153178 | 50 | recorded |
+| `final60_hybrid_seed42` | `HybridSegmentation` | CONTROLLED | 0.6701672077 | 49 | recorded; early stop 59 |
+| `final60_hybrid_seed1337` | `HybridSegmentation` | CONTROLLED | 0.6731674075 | 47 | recorded; early stop 57; resume metadata retained |
+| `final100_hybrid_seed42` | `HybridSegmentation` | EXPLORATORY | 0.6715497971 | 58 | `PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS`; `completed: false` |
+
+These values are best validation foreground-mIoU measurements from the
+respective run records. They are not test-set results, a completed three-seed
+comparison, or evidence of architecture superiority. The final-100 directory
+contains a best checkpoint and periodic metadata observed from epochs 54–84,
+but lacks the complete continuation history, continuation metrics, and
+termination reason. It must not be described as a completed 100-epoch run or
+used as a matched comparison arm.
+
+The product default is `final60_hybrid_seed42`; the API exposes the catalogue
+through `GET /models`, and the selected ID is persisted in inspection state and
+locked after analysis. These are implementation and provenance changes, not a
+new scientific conclusion. The RQ2 confidence-honesty operational definition
+and a reproducible comparison summary remain pending.

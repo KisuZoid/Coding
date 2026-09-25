@@ -9,12 +9,21 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from apps.api.agent.assistant import AssistantService, build_assistant
 from apps.api.agent.graph import Services, build_workflow
 from apps.api.inspection.consent_service import ConsentService
+from apps.api.model_catalog import (
+    DEFAULT_MODEL_ID,
+    LEGACY_MODEL_ID,
+    ModelSpec,
+    UnknownModelError,
+    get_model_spec,
+    public_model_infos,
+)
 from apps.api.settings import Settings, get_settings
 from apps.api.storage import (
     Database,
@@ -32,7 +41,6 @@ logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _REGISTRY = Path("ml/experiments/registry.json")
-_DEFAULT_CHECKPOINT = Path("ml/experiments/pilot15_hybrid/best_checkpoint.pt")
 
 
 def _norm_path(candidate: Path) -> Path:
@@ -123,64 +131,141 @@ class Container:
     consent: ConsentService
     assistant: AssistantService
     workflow: object
-    _engine: SegmentationEngine | None = None
+    _engine: SegmentationEngine | None = field(default=None, init=False)
+    _engines: dict[str, SegmentationEngine] = field(default_factory=dict, init=False)
 
-    def resolved_model_path(self) -> Path:
-        """Configured checkpoint path, resolved CWD- and repo-root-independently."""
-        return _norm_path(Path(self.settings.model_path or _DEFAULT_CHECKPOINT))
+    def default_model_id(self) -> str:
+        return self.settings.model_id or DEFAULT_MODEL_ID
 
-    def engine(self) -> SegmentationEngine:
-        if self._engine is None:
-            checkpoint_path = self.resolved_model_path()
-            directory = checkpoint_path.parent if checkpoint_path.is_file() else None
-            meta = _registry_meta(directory) if directory else (None, None, None)
-            git_revision, iou, iou_key = meta
+    def model_id_for_session(self, requested: str | None = None) -> str:
+        if requested is not None:
+            if requested == LEGACY_MODEL_ID:
+                return requested
+            get_model_spec(requested)
+            return requested
+        if self.settings.model_path is not None and self.settings.model_id is None:
+            return LEGACY_MODEL_ID
+        return self.default_model_id()
 
-            equipped = _load_checkpoint(directory) if directory else None
-            base, arch = (64, "cardd_unet") if equipped is None else (equipped[1], equipped[2])
+    def model_infos(self) -> list[dict[str, Any]]:
+        return public_model_infos()
 
-            notes: tuple[str, ...] | None = None
-            if iou is not None:
-                if iou_key == "best_val_foreground_miou":
-                    model_note = (
-                        "Current research segmentation model (CarDD, 15-epoch pilot, "
-                        f"intermediate): foreground mIoU ~{iou:.4f} — not a final "
-                        "research conclusion."
-                    )
-                else:
-                    model_note = (
-                        f"Current research segmentation model (CarDD): validation mIoU ~{iou:.4f}."
-                    )
-                notes = (
-                    model_note,
-                    "Per-pixel predictions are preliminary; not verified damage extent.",
-                    "Mask-derived severity is 'not currently reliable' for this model.",
-                )
+    def resolved_model_path(self, model_id: str | None = None) -> Path:
+        selected = model_id or self.model_id_for_session()
+        if self.settings.model_path is not None and selected == LEGACY_MODEL_ID:
+            return _norm_path(self.settings.model_path)
+        if selected == LEGACY_MODEL_ID:
+            raise UnknownModelError(selected)
+        return get_model_spec(selected).checkpoint
 
-            logger.info(
-                "building segmentation engine: checkpoint=%s exists=%s "
-                "git_revision=%s registry_miou=%s arch=%s base=%s",
-                checkpoint_path,
-                checkpoint_path.is_file(),
-                git_revision,
-                f"{iou:.4f}" if iou is not None else None,
-                arch,
-                base,
+    def _research_notes(
+        self,
+        label: str,
+        iou: float | None,
+        description: str,
+    ) -> tuple[str, ...]:
+        if iou is None:
+            metric_note = f"{label}: validation metric is unavailable in the local run record."
+        else:
+            metric_note = f"{label}: validation foreground mIoU ~{iou:.4f}."
+        return (
+            f"{metric_note} {description}",
+            "Per-pixel predictions are preliminary; not verified damage extent.",
+            "Mask-derived severity is 'not currently reliable' for this model.",
+        )
+
+    def _engine_metadata(
+        self,
+        model_id: str,
+        checkpoint_path: Path,
+        directory: Path | None,
+    ) -> tuple[ModelSpec | None, int, str, str | None, float | None, str]:
+        if model_id != LEGACY_MODEL_ID:
+            spec = get_model_spec(model_id)
+            info = spec.public_info()
+            equipped = (
+                _load_checkpoint(directory) if directory and checkpoint_path.is_file() else None
             )
-            self._engine = SegmentationEngine.from_checkpoint(
-                checkpoint_path,
-                model_version=self.settings.model_version or None,
-                experiment_id=directory.name if directory else "unknown",
-                git_revision=git_revision,
-                base=base,
-                baseline_notes=notes,
-            )
-            if _canon_arch(self._engine.metadata.arch) != _canon_arch(arch):
+            base, arch = (0, spec.architecture) if equipped is None else (equipped[1], equipped[2])
+            if _canon_arch(arch) != _canon_arch(spec.architecture):
                 raise AssertionError(
-                    "checkpoint advertises arch "
-                    f"{arch!r} but engine built {self._engine.metadata.arch!r}"
+                    f"model {model_id!r} advertises arch {arch!r}, expected {spec.architecture!r}"
                 )
-        return self._engine
+            metric = info.get("best_val_foreground_miou")
+            git_revision = info.get("git_revision")
+            description = info.get("description")
+            return (
+                spec,
+                base,
+                arch,
+                git_revision if isinstance(git_revision, str) else None,
+                float(metric) if isinstance(metric, int | float) else None,
+                description if isinstance(description, str) else "",
+            )
+
+        meta = _registry_meta(directory) if directory else (None, None, None)
+        git_revision, iou, _ = meta
+        equipped = _load_checkpoint(directory) if directory and checkpoint_path.is_file() else None
+        base, arch = (64, "cardd_unet") if equipped is None else (equipped[1], equipped[2])
+        return (
+            None,
+            base,
+            arch,
+            git_revision,
+            iou,
+            "Configured checkpoint; its run status is not part of the active model catalog.",
+        )
+
+    def engine(self, model_id: str | None = None) -> SegmentationEngine:
+        selected = model_id or self.model_id_for_session()
+        if self._engine is not None:
+            metadata = getattr(self._engine, "metadata", None)
+            if metadata is None or getattr(metadata, "model_id", None) in {None, selected}:
+                return self._engine
+        cached = self._engines.get(selected)
+        if cached is not None:
+            return cached
+
+        checkpoint_path = self.resolved_model_path(selected)
+        directory = checkpoint_path.parent if checkpoint_path.is_file() else None
+        spec, base, arch, git_revision, iou, description = self._engine_metadata(
+            selected,
+            checkpoint_path,
+            directory,
+        )
+        label = spec.label if spec is not None else "Configured checkpoint"
+        notes = self._research_notes(label, iou, description)
+
+        logger.info(
+            "building segmentation engine: model_id=%s checkpoint=%s exists=%s "
+            "git_revision=%s registry_miou=%s arch=%s base=%s",
+            selected,
+            checkpoint_path,
+            checkpoint_path.is_file(),
+            git_revision,
+            f"{iou:.4f}" if iou is not None else None,
+            arch,
+            base,
+        )
+        experiment_id = (
+            spec.experiment_id if spec is not None else (directory.name if directory else selected)
+        )
+        engine = SegmentationEngine.from_checkpoint(
+            checkpoint_path,
+            model_version=self.settings.model_version or None,
+            model_id=selected,
+            experiment_id=experiment_id,
+            git_revision=git_revision,
+            base=base,
+            baseline_notes=notes,
+        )
+        if _canon_arch(engine.metadata.arch) != _canon_arch(arch):
+            raise AssertionError(
+                f"checkpoint advertises arch {arch!r} but engine built {engine.metadata.arch!r}"
+            )
+        self._engines[selected] = engine
+        self._engine = engine
+        return engine
 
 
 def build_container(settings: Settings | None = None) -> Container:

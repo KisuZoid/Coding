@@ -1,116 +1,127 @@
 # MEMORY.md — AutoInspect-X
 
-Compact record of what this repository *now believes to be true*. This file is
-re-written to reflect current state only; it does not duplicate `README.md`
-(what it is) or `TASKS.md` (what is pending). Historical reasoning lives in the
-ADRs and git log.
+Compact record of the current repository facts. Historical reasoning and old
+experiment results remain in the ADRs, archived documents, and Git history.
 
-> **Integrity anchor:** the 15-epoch pilot numbers below are **preliminary
-> validation observations, not a research conclusion.** No architecture is
-> claimed superior until the locked 60-epoch / 3-seed comparison completes.
+> **Integrity anchor:** four controlled runs use the two available seeds
+> `42` and `1337`; this is not a completed three-seed study. The
+> `final100_hybrid_seed42` record is exploratory and
+> `PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS`. No architecture superiority,
+> statistical significance, or completed final-100 claim is supported.
 
-## Current state (2026-09-24)
+## Current state — 2026-09-25
 
-- **Phase-I report delivered (Task E/E2).** `Capstone report/DSN4091 Capstone
-  Project Phase-I Report - Kislay Anand.docx` + `.pdf` (78 pp. A4) generated
-  from the sample-report structure and real repository evidence. Student:
-  Kislay Anand (23BAI10359); supervisor Dr. Rudra Kalyan Nayak.
-  **2026-09-24 final revision pass applied:** front matter (cover, bonafide,
-  acknowledgements, abstract, LOF, TOC) preserved intact; Chapter 3 carries a
-  precise 5-column tech stack with versions read only from repo manifests
-  (requirements-ci.txt, package.json+lock, pyproject.toml, uv.lock); Chapter 4
-  expanded to eight sections (4.4 Data Flow, 4.5 ML/CV Methodology, 4.7
-  Novelty inserted; 4.6 UI renamed) with the real repository folder tree;
-  Chapter 5 pseudo-code replaced by pointers to Appendix B; Appendix B holds 14
-  complete verbatim listings with source path + true line ranges, all
-  wrap-free at the emitted mono size. QC-verified: TOC/LOF page numbers
-  converge (two-pass LibreOffice render), 22 LOF figures with pages, chapters
-  start fresh pages, front-matter roman / body-decimal footers, no secrets,
-  no cost/repair claims, no Underbelly content, no stripped-experiment names
-  (only verbatim engine.py legacy-dispatch lines remain). Pilot numbers quoted
-  verbatim from `run_record.json` (preliminary; see integrity anchor). Report
-  builder script at `/tmp/opencode/revise_report.py` (surgical python-docx
-  edits from `Capstone report/DSN4091 ... .docx`); report content is not
-  maintained in-repo.
-- **Project:** photo-first vehicle damage *segmentation* with an honesty
-  contract (MODEL PREDICTION always labelled; no cost/severity/physical-area
-  outputs — ADR 0011).
-- **Research models (spec v3):** baseline `ResNet34UNet`, proposed
-  `HybridSegmentation` (CNN encoder → transformer bottleneck → CNN decoder with
-  skips). Legacy `CarddHybrid`/`CarddUNet` exist but are superseded; their model
-  files stay live because the engine and train legacy dispatch load `cardd_*`
-  checkpoints; run records are archived.
-- **Models/checkpoints (git-ignored):**
-  - `ml/experiments/pilot15_hybrid/best_checkpoint.pt` — **ACTIVE, demo
-    default**, experiment `pilot15_hybrid-20260922-115320`, git `fb2fb59`,
-    foreground mIoU 0.5963 / mDice 0.7320 / pixel acc 0.8873 @ epoch 14,
-    ~27.9M params.
-  - `ml/experiments/pilot15_baseline/best_checkpoint.pt` — **SUPERSEDED /
-    retained baseline arm**, `pilot15_baseline-20260922-110722`, foreground
-    mIoU 0.6127 / mDice 0.7440 / pixel acc 0.8979 @ epoch 14, ~24.6M params.
-  - Both: 15 epochs, seed 0, full official CarDD splits, EMA weights, shared
-    softmax-CE loss, class-sampled batches. **Both were still improving at
-    epoch 14 → do not over-read.**
-  - Large periodic checkpoints → `storage/models/pilot15_{baseline,hybrid}/`.
-  - Historical experiment dirs + logs → `archive/experiments/` (git-ignored).
-- **Registry:** `ml/experiments/registry.json` (list; git-ignored). Pilot
-  entries carry `config` (full hyperparameters), `git_revision`, `best_epoch`,
-  `best_val_foreground_miou`, `status`, `status_reason`. Legacy entries keep
-  `best_val_mean_iou`; container falls back when foreground key absent.
-- **Engine constraints (verified):**
-  - `_build_model` normalizes `arch_l = "".join(arch.lower().split("_"))`;
-    `resnet34unet`/`baseline` → ResNet34UNet; `hybrid`/`hybrid_segmentation` →
-    HybridSegmentation; `carddhybrid` → CarddHybrid; empty/`carddunet` →
-    CarddUNet; else `ModelVersionError`.
-  - `from_checkpoint` enforces base-consistency **only** for arch names starting
-    with `cardd` (research checkpoints store `base=0`); `experiment_id` defaults
-    to parent dir name; tuple `(logits, aux)` outputs handled via `_main_logits`.
-  - Honesty flags (`min_mean_confidence`, `min_damage_fraction`) are set per
-    checkpoint by the container; demo-default thresholds are conservative.
-- **API/UI defaults:** container default checkpoint = `pilot15_hybrid`;
-  `MODEL_PATH`/`MODEL_VERSION` env overrides (`.env.example`); `.env` points at
-  `pilot15_hybrid` — **2026-09-22 it had been left pointing at the archived
-  `cardd_hybrid_ce` run, which surfaced as "model unavailable" in the demo.**
-  `container.py` resolves the checkpoint path CWD-/repo-root-independently and
-  logs resolved path + registry metadata; `engine.from_checkpoint` accepts a
-  `model` alias for legacy artefacts; the router classifies load vs. inference
-  failures; the startup lifespan logs a clear error when the checkpoint is
-  missing. New `tests/test_model_integration.py` covers all of this.
-- **Gates (last full run):** ruff clean, mypy clean (86 files), pytest
-  **144 passed**, eslint/tsc/next build clean.
-- **Literature review:** `docs/research/literature_review.tex` + `references.bib`
-  (30 verified refs), compiled with tectonic → `literature_review.pdf` (10 pp.,
-  IEEEtran; `IEEEtran.cls`/`.bst` copied next to the tex for self-contained
-  builds; `*.aux/bbl/blg/synctex` git-ignored). Author block = **Capstone Group
-  160, School of Computing Science Engineering and AI, VIT Bhopal University,
-  Sehore**; `\label{sec:hybrid}` added so `\ref{sec:hybrid}` resolves (was a
-  dangling `??` the previous PDF silently rendered).
+- Product scope is photo-first vehicle damage segmentation with an honesty
+  contract. Repair cost, repair action, hidden damage, physical cm² area, and
+  the questionnaire flow are out of scope under ADR 0011.
+- The backend exposes an explicit five-model catalogue through `GET /models`.
+  The frontend loads the catalogue and persists the selected model in the
+  inspection session.
+- `final60_hybrid_seed42` is the current default. `MODEL_PATH` and
+  `MODEL_VERSION` remain legacy/custom compatibility settings, not the normal
+  catalogue path.
+- Session model selection is accepted before analysis and locked once
+  inspection evidence exists. Unknown IDs return `MODEL_NOT_FOUND`; locked
+  changes return `MODEL_SELECTION_LOCKED`.
+- `ml/inference/engine.py` dispatches from checkpoint `model_arch` metadata and
+  reports the selected model ID. The API does not import training code.
 
-## Conventions (do not break)
+## Active model evidence
 
-- **Git:** repo root is the parent folder, not `Capstone1`. Never `git add .`
-  / `git add -A`; always scope to `college/Capstone1/...`. Never commit
-  `*.pt`, `storage/`, `ml/experiments/`, caches.
-- **Evidence labels:** REAL GROUND TRUTH / WEAK LABEL / SYNTHETIC LABEL /
-  DERIVED FEATURE / MODEL PREDICTION / ASSUMPTION stay distinct in code, data,
-  docs, and UI (AGENTS.md §3).
-- **Cost/severity/area:** reintroducing any cost-like field or physical-area
-  claim requires a new ADR (ADR 0011).
-- **Archive, don't delete:** superseded material → `archive/...` with
-  provenance entries in `archive/README.md`.
-- **Docs:** `docs/decisions/` (ADRs) and `docs/architecture/
-  cnn-transformer-segmentation.md` (spec v3) are authoritative/append-only.
-- **Experiments:** every run records experiment ID, dataset+version, splits,
-  seed, code/model version, hyperparameters, metrics, assumptions in
-  `ml/experiments/<id>/run_record.json` + registry (AGENTS.md §4).
+| Model ID | Architecture | Seed | Status | Best val foreground mIoU | Best epoch |
+|---|---|---:|---|---:|---:|
+| `final60_baseline_seed42` | ResNet34UNet | 42 | CONTROLLED | 0.6676585078 | 44 |
+| `final60_baseline_seed1337` | ResNet34UNet | 1337 | CONTROLLED | 0.6681153178 | 50 |
+| `final60_hybrid_seed42` | HybridSegmentation | 42 | CONTROLLED | 0.6701672077 | 49 |
+| `final60_hybrid_seed1337` | HybridSegmentation | 1337 | CONTROLLED | 0.6731674075 | 47 |
+| `final100_hybrid_seed42` | HybridSegmentation | 42 | EXPLORATORY | 0.6715497971 | 58 |
+
+The final-100 record contains a best checkpoint and periodic evidence observed
+at epochs 54–84, but no complete history or termination reason. It is not a
+matched comparison. The hybrid seed-1337 run retains its resume metadata.
+
+## Evidence and storage
+
+- CarDD-COCO official split counts measured locally: train `2,816`, validation
+  `810`, test `374`.
+- CarDD segmentation labels are REAL GROUND TRUTH for the dataset; model
+  outputs are MODEL PREDICTION; image-relative area ratios are DERIVED
+  FEATURES.
+- Active experiment directories retain `best_checkpoint.pt` and
+  `run_record.json` only. `ml/experiments/` and `archive/experiments/` are
+  git-ignored local storage.
+- Pilot and legacy experiment provenance is under `archive/experiments/`.
+  Generated weights, datasets, `.env`, and storage content must never be
+  committed.
+- The local `.env` was changed to use `MODEL_ID=final60_hybrid_seed42`; it also
+  contains a secret credential and remains ignored.
+- The live cinematic scene 4 retains 84 OCR-audited frames. Frames 085–240,
+  which contained obsolete repair-action and repair-cost copy, are archived at
+  `archive/cinematic/legacy-public-4/` and are not served.
+
+## Product contract
+
+1. Create a session and optionally select a catalogue model.
+2. Upload one photo.
+3. Run the capture-quality gate.
+4. On rejection, return `QUALITY_FAILED` with retake guidance and no mask.
+5. On acceptance, run the selected architecture and return predicted classes,
+   normalized area ratios, confidence, honesty flags, model metadata, and an
+   overlay.
+6. Optionally store consent and continue grounded chat.
+
+The assistant is LangChain ChatGroq when configured, otherwise the
+`StubAssistant`. It is not the segmentation model and cannot create ground
+truth or cost/repair claims.
+
+## Current validation
+
+Verified on 2026-09-25 with the `ai` conda environment (Python 3.12.13) and
+Node 22, on commit `931822c` plus the current uncommitted working tree:
+
+- Backend: `ruff check` and `ruff format --check` clean over
+  `apps/ ml/ tests/ conftest.py`; `mypy` strict clean over `apps/ ml/ tests/`
+  (89 files); full `pytest tests/` green — 147 passed, 10 warnings.
+- Frontend: `npm run lint -- --max-warnings=0`, `npm run typecheck`, and
+  `npm run build` all pass.
+- Browser E2E: full Playwright run green — 34 passed, 8 skipped. The skips are
+  the intentional desktop-only engine journeys repeated on tablet and mobile;
+  the desktop journeys ran against the real
+  `final60_hybrid_seed42` checkpoint.
+- Documentation: `docs/research/literature_review.tex` compiles with Tectonic to
+  a 10-page PDF with 30 references and no unresolved citations. Remaining
+  output is Underfull-box typography plus Tectonic's known `.bbl`-change rerun
+  loop, neither of which affects content.
+- Deliverables: `Capstone report/` regenerates to 82 A4 pages with a converged
+  TOC (49 rows), LOF (22 rows) and 15 code listings whose longest source lines
+  survive rendering; `AutoInspect-X_Capstone.pptx` has 17 slides with no
+  remaining pilot-era metric, seed-count or cost claim.
+- The `public/4/` textual OCR audit is complete; direct visual interpretation
+  was unavailable in the current tool environment.
+
+Two environment-driven defects were found and fixed while running the matrix:
+the repository `.env` (git-ignored) leaked `MODEL_ID` into API tests that
+exercise the legacy configured-checkpoint route, and the header connectivity
+chip is intentionally hidden below the `sm` breakpoint, which the shell and
+responsive specs asserted as visible on every viewport.
 
 ## Open items
 
-- RQ2 confidence-honesty operational definition not yet locked; RQ1 final
-  comparison pending the 60-epoch / 3-seed run → `research_summary.md`.
-- `cardd_*` demo-era model files kept live solely for legacy dispatch; safe to
-  archive only after a documented decision that legacy load is dropped.
-- Registry `data_root` points at the training machine path
-  (`/content/data/CarDD_COCO`); harmless for inference but not portable metadata.
-- Next recommended step and full tracker: `TASKS.md` (Phase-I report done;
-  next: viva dry-run or the 60-epoch / 3-seed comparison).
+- Lock the RQ2 confidence-honesty operational definition.
+- Decide whether a third controlled seed and a reproducible `research_summary.md`
+  are required before making a comparative claim.
+- Recover final-100 history only from an original log or rerun; do not invent
+  missing epochs.
+- `research_summary.md` and the report/presentation regeneration tooling are not
+  in the repository: the report and deck are produced by an out-of-tree
+  generator kept outside the worktree. Decide whether that generator should be
+  committed so the deliverables are reproducible from the repository alone.
+
+## Invariants
+
+- Keep REAL GROUND TRUTH, WEAK LABEL, SYNTHETIC LABEL, DERIVED FEATURE,
+  MODEL PREDICTION, and ASSUMPTION distinct.
+- Do not add cost-like output or physical-area claims without a new ADR.
+- Do not claim superiority from the current two-seed values.
+- Do not commit secrets, checkpoints, datasets, or ignored experiment files.
+- Archive superseded material with provenance; do not silently delete it.

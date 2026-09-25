@@ -10,9 +10,9 @@
 ///   Scene 1: 300 x 1920x1080  (16:9)
 ///   Scene 2: 240 x 1920x1080  (16:9)
 ///   Scene 3: 133 x 1280x720   (16:9)
-///   Scene 4: 240 x 1920x1080  (16:9)
+///   Scene 4: 84 x 1920x1080  (16:9)
 ///
-/// Total = 913 frames.
+/// Total = 757 frames.
 
 export interface SceneText {
   eyebrow: string;
@@ -82,7 +82,7 @@ const SCENE_DEFS: Omit<CinematicScene, "startFrame" | "endFrame">[] = [
   {
     id: 4,
     folder: "4",
-    frameCount: 240,
+    frameCount: 84,
     width: 1920,
     height: 1080,
     textStart: 0.1,

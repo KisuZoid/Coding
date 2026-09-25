@@ -12,11 +12,13 @@ import {
   createSession,
   deleteInspection,
   getHealth,
+  getModels,
+  selectModel,
   sendChat,
   sendConsent,
   uploadPhoto,
 } from "@/lib/api";
-import type { ChatMessage } from "@/lib/types";
+import type { ChatMessage, ModelInfo } from "@/lib/types";
 
 function errorText(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -26,6 +28,8 @@ function errorText(error: unknown): string {
 
 export default function DemoJourney() {
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [connection, setConnection] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -44,8 +48,22 @@ export default function DemoJourney() {
         if (!cancelled) setConnection(false);
       }
       try {
-        const session = await createSession();
-        if (!cancelled) setSessionId(session.session_id);
+        const response = await getModels();
+        const available = response.models.filter((model) => model.available);
+        const defaultModel =
+          response.models.find((model) => model.model_id === response.default_model_id) ??
+          available[0] ??
+          response.models[0];
+        if (!defaultModel) throw new Error("No model catalog entries are available.");
+        if (!cancelled) {
+          setModels(response.models);
+          setSelectedModelId(defaultModel.model_id);
+        }
+        const session = await createSession(defaultModel.model_id);
+        if (!cancelled) {
+          setSessionId(session.session_id);
+          setSelectedModelId(session.model_id);
+        }
       } catch (e) {
         if (!cancelled) setError(errorText(e));
       }
@@ -54,6 +72,20 @@ export default function DemoJourney() {
       cancelled = true;
     };
   }, []);
+
+  const handleModelChange = async (modelId: string) => {
+    if (!sessionId || busy || modelId === selectedModelId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await selectModel(sessionId, modelId);
+      setSelectedModelId(response.model_id);
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleChat = async (text: string) => {
     if (!sessionId || busy) return;
@@ -91,6 +123,7 @@ export default function DemoJourney() {
         ? {
             role: "assistant",
             content: res.assistant_message,
+            model_id: res.model_id,
             overlay_png_base64: res.overlay_png_base64 ?? undefined,
             quality_status: res.quality_status,
             classes_present: res.classes_present,
@@ -99,9 +132,10 @@ export default function DemoJourney() {
             damage_fraction: res.damage_fraction,
           }
         : {
-            role: "assistant",
-            content: res.assistant_message,
-            quality_status: res.quality_status,
+             role: "assistant",
+             content: res.assistant_message,
+             model_id: res.model_id,
+             quality_status: res.quality_status,
             quality_reasons: res.quality_reasons,
           };
       setMessages((m) => [...m, assistant]);
@@ -160,8 +194,9 @@ export default function DemoJourney() {
     setConsented(null);
     setConsentNote(null);
     try {
-      const session = await createSession();
+      const session = await createSession(selectedModelId ?? undefined);
       setSessionId(session.session_id);
+      setSelectedModelId(session.model_id);
     } catch (e) {
       setError(errorText(e));
     } finally {
@@ -218,8 +253,27 @@ export default function DemoJourney() {
               AutoInspect<span className="text-amber-400">-X</span>
             </span>
           </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <span role="status" aria-label={statusLabel} className={`inline-flex items-center gap-1.5 text-xs ${statusColor}`}>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <label htmlFor="model-selector" className="sr-only">Segmentation model</label>
+            <select
+              id="model-selector"
+              value={selectedModelId ?? ""}
+              onChange={(event) => void handleModelChange(event.target.value)}
+              disabled={busy || inspectionDone || models.length === 0}
+              title="Choose the model used for this inspection"
+              className="max-w-[12rem] rounded-full border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-slate-200 outline-none transition hover:border-white/20 focus-visible:ring-2 focus-visible:ring-amber-400/60 disabled:cursor-not-allowed disabled:opacity-45 sm:max-w-[16rem] sm:text-sm"
+            >
+              {models.length === 0 ? (
+                <option value="">Loading models…</option>
+              ) : (
+                models.map((model) => (
+                  <option key={model.model_id} value={model.model_id} disabled={!model.available}>
+                    {model.label}{model.available ? "" : " · unavailable"}
+                  </option>
+                ))
+              )}
+            </select>
+            <span role="status" aria-label={statusLabel} className={`hidden items-center gap-1.5 text-xs sm:inline-flex ${statusColor}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${statusDot}`} aria-hidden />
               {statusLabel}
             </span>

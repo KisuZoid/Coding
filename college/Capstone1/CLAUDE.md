@@ -21,7 +21,7 @@ Photo (attached in the chat composer)
       ↓
 Capture-quality gate (blur / dark / glare / framing / visibility)
       ↓  on rejection → 200 QUALITY_FAILED + assistant retake guidance
-Damage segmentation (CarddHybrid by default; legacy CarddUNet) — 7-channel argmax
+Damage segmentation (selected catalogue model; `final60_hybrid_seed42` by default) — 7-channel argmax
       ↓
 Evidence payload (classes, image-denominator area ratios, confidence,
       low-confidence flag, quality, model metadata) + predicted-mask overlay
@@ -137,41 +137,42 @@ Present today:
 ```
 AutoInspect-X/
 ├── docs/
-│   ├── architecture/    # System architecture
-│   ├── research/        # Research scope, problem definition, experiment principles
+│   ├── architecture/    # Current system architecture and model boundary
+│   ├── research/        # Literature review and implementation reconciliation
 │   ├── ml/              # ML engineering guidelines
-│   └── decisions/       # ADRs
+│   └── decisions/       # ADRs 0001–0013
 ├── ml/
-│   ├── datasets/        # CarDD audit + typed data adapter (cardd_adapter.py, cardd_audit.py)
-│   │   └── reports/     # cardd_audit.json (experiment documentation)
-│   ├── models/          # CarddUNet (smoke U-Net, ADR 0006) + CarddHybrid (CNN+transformer, ADR 0010)
-│   ├── training/        # PyTorch dataset adapter, smoke test, smoke + real trainers, shared loss
-│   ├── evaluation/      # segment. metric harness (metrics.py: IoU/Dice, Phase 4)
-│   └── experiments/     # run records + checkpoints + registry.json (git-ignored)
-├── tests/               # pytest: adapter, dataset, metrics tests (dataset-gated skips)
-├── src/public/          # Demo videos 1-4.mp4 (staged; content unverified)
-├── init.md              # Session bootstrap protocol
-├── CLAUDE.md            # This file
-├── AGENTS.md            # Agent rules
-├── MEMORY.md            # Change log with reasoning
-├── TASKS.md             # Numbered task history
-├── LOGIC.md             # Workflow / automation logic
-├── RUNBOOK.md           # Everything on this machine: how to run it locally
+│   ├── datasets/        # CarDD audit and typed data adapter
+│   ├── models/          # ResNet34UNet, HybridSegmentation, legacy Cardd models
+│   ├── training/        # Research-only training pipeline
+│   ├── evaluation/      # Full-split metrics and qualitative evaluation
+│   ├── inference/       # Architecture-aware production engine
+│   └── experiments/     # Git-ignored checkpoints, run records, registry
+├── apps/
+│   ├── api/              # FastAPI routes, model catalogue, container, state
+│   └── web/              # Next.js photo-first demo
+├── public/               # Cinematic frame sequences
+├── tests/                # API, engine, catalogue, and integration tests
+├── init.md               # Session bootstrap protocol
+├── CLAUDE.md             # This file
+├── AGENTS.md             # Agent rules
+├── MEMORY.md             # Compact current state
+├── TASKS.md              # Current task tracker
+├── LOGIC.md              # Workflow and automation logic
+├── RUNBOOK.md            # Local operating instructions
 ├── README.md
-├── CONTRIBUTING.md
-├── SECURITY.md
-├── pyproject.toml       # Python tooling configuration
+├── pyproject.toml        # Python tooling configuration
 ├── .env.example
-├── .editorconfig
 └── .gitignore
 ```
 
 Dataset roots (`datasets/`) are git-ignored; commit `ml/datasets/reports/`
-documentation instead. Key ADRs: 0003 (training/inference separation),
-0004 (ground-truth labelling policy), 0005 (CarDD has no part masks →
-only image-denominator area ratio is derivable), 0006 (segmentation framework =
-raw PyTorch small U-Net), 0010 (CarddHybrid hybrid model + arch-tagged
-checkpoints), 0011 (photo-first scope; cost/repair/questionnaire removed).
+documentation instead. Key ADRs: 0003 (training/inference separation), 0004 (ground-truth labelling
+policy), 0005 (CarDD has no part masks → only image-denominator area ratio is
+derivable), 0006 (segmentation framework), 0010 (CarddHybrid and arch-tagged
+checkpoints), 0011 (photo-first scope; cost/repair/questionnaire removed), 0012
+(five-model runtime catalogue and partial final-100 record), and 0013 (current
+Dice + Focal training objective).
 
 `apps/web/`, `apps/api/`, and `ml/inference/` exist today (photo-first demo,
 ADR 0011). Still planned, deliberately **not** created yet — create each only
@@ -224,16 +225,31 @@ No direct cross-boundary imports.
 ## 8. ML rules
 
 - Training and inference stay separate. Training code never lives in the API app.
-- Never hard-code dataset paths, checkpoint paths, model versions, secrets, or
-  experiment parameters. Use configuration and environment variables.
+- Never hard-code dataset paths, secrets, or experiment parameters. The
+  explicit model catalogue is the only committed model-ID/path allowlist;
+  legacy custom paths come from configuration.
 - Detail lives in `docs/ml/ml-engineering-guidelines.md`.
 
 ---
 
 ## 9. Quality gates
 
+Backend commands use the `ai` conda environment:
+
+```bash
+ruff check apps/ ml/ tests/ conftest.py
+ruff format --check apps/ ml/ tests/ conftest.py
+python -m mypy apps/ ml/ tests/
+python -m pytest tests/
 ```
-format → lint → type check → unit tests → integration / E2E when applicable
+
+Frontend commands run in `apps/web`:
+
+```bash
+npm run lint -- --max-warnings=0
+npm run typecheck
+npm run build
+npx playwright test
 ```
 
 - GPU training never runs in CI.
@@ -267,6 +283,6 @@ format → lint → type check → unit tests → integration / E2E when applica
 
 At the end of every working session, update:
 
-- `TASKS.md` — the numbered task, the user's prompt, and the steps completed.
+- `TASKS.md` — current phase, completed work, active work, and next task.
 - `MEMORY.md` — what changed, and the reasoning behind it.
 - `LOGIC.md` — only when workflow or automation logic changed.

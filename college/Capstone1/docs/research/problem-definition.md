@@ -1,109 +1,94 @@
 # Problem Definition
 
-Reconciled against `AutoInspect-X_Research_Report_Corrected.md` (photo-first
-scope, 2026-09-21) and ADRs 0010–0011.
+Reconciled against `AutoInspect-X_Research_Report_Corrected.md`, ADR 0010,
+ADR 0011, ADR 0012, and ADR 0013.
 
 ## Problem
 
-Estimating vehicle damage from a photograph is currently manual, slow, and
-inconsistent between assessors. An automated photo-first inspection would
-support insurance triage, workshop intake, and used-vehicle assessment —
-provided it is presented as decision support and never as a quotation.
+Vehicle damage assessment from a photograph is manual, slow, and dependent on
+the assessor. A photo-first system can provide useful decision support, but it
+must distinguish a predicted mask from verified damage and must not imply
+physical scale, hidden damage, repair action, or cost.
 
-With the photo-first scope (ADR 0011) the system answers one question honestly:
+The current system answers:
 
-1. **Where is the damage, and how sure can we honestly be?** — a pixel-level
-   damage mask, its per-class estimated area as a normalized ratio, and an
-   explicit low-confidence flag.
+> Where does the selected segmentation model predict visible damage in this
+> image, and how confident is that prediction?
 
-The earlier "repair action + repair cost" decisions were removed: CarDD has no
-repair-action or observed-cost labels, and a rule-generated cost table is a
-SYNTHETIC LABEL, not evidence (ADR 0004, ADR 0011).
+The image-relative area ratio is a derived feature, not a physical measurement.
 
 ## Research question
 
-How does the CNN+Transformer hybrid (`CarddHybrid`, ADR 0010) compare against
-the plain U-Net baseline (`CarddUNet`) for damage-segmentation quality (mean
-IoU, Dice, pixel accuracy, small-damage slice) and confidence honesty on CarDD,
-on identical splits, seed, and training schedule?
+How does the CNN–Transformer hybrid (`HybridSegmentation`) compare with a
+ResNet34 U-Net baseline (`ResNet34UNet`) for damage-segmentation quality and
+confidence honesty on CarDD under the recorded split, seed, and training
+contract?
 
-## Why segmentation rather than classification
+The current catalogue contains two controlled seeds (`42`, `1337`) for each
+architecture. It is a two-seed comparison, not a completed three-seed study.
+The `final100_hybrid_seed42` continuation is exploratory and has only a
+partially reconstructed record.
 
-A classifier answers "is this vehicle damaged, and how badly". Segmentation
-answers "which class, where, and how much of the image" — producing a structured
-damage representation that can be shown to the user as visual evidence and
-labelled with honest confidence. Explainability is a project requirement, not a
-bonus.
+## Why segmentation
+
+A classifier can say whether a vehicle is damaged but does not show where each
+class appears. Segmentation produces a structured visual representation:
+predicted classes, their image-relative proportions, confidence, and an
+overlay. These outputs are useful for inspection support while remaining
+explicitly labelled predictions.
 
 ## Inputs
 
 | Input | Type | Source |
 |---|---|---|
-| Vehicle photograph | image | user upload (attached in the chat composer) |
-| Damage evidence context | text (optional) | conversational intake (incident description) |
+| Vehicle photograph | image | User upload in the chat composer |
+| Optional user text | text | Conversational context only |
 
-No vehicle metadata (make/model/year) is required or used; no metadata arm
-exists (ADR 0011).
+Vehicle metadata, insurance data, and questionnaire fields are not model inputs
+in the current scope.
 
-## Outputs
+## Outputs and evidence labels
 
-| Output | Form | Ground-truth category |
+| Output | Form | Category |
 |---|---|---|
-| Damage mask | 7-channel argmax over background + 6 damage classes | MODEL PREDICTION |
-| Per-class area | `damaged_pixels / total_image_pixels` ratio | DERIVED FEATURE |
-| Confidence | mean pixel confidence + `low_confidence` flag | MODEL PREDICTION |
-| Evidence overlay | predicted-mask PNG over the photo | MODEL PREDICTION |
-| Explanation | honest narrative from LangChain ChatGroq (or offline stub), grounded in the persisted evidence | MODEL PREDICTION / ASSUMPTION on framing |
+| Damage mask | 7-channel argmax: background + six damage classes | MODEL PREDICTION |
+| Per-class area | `damaged_pixels / total_image_pixels` | DERIVED FEATURE |
+| Confidence | Mean pixel confidence and `low_confidence` flag | MODEL PREDICTION |
+| Overlay | Predicted mask rendered over the photo | MODEL PREDICTION |
+| Explanation | Assistant narrative grounded in stored evidence | MODEL PREDICTION / ASSUMPTION on framing |
+| Consent sample | Optional stored sample with model-suggested provenance | Not validated ground truth |
 
-Explicitly **not** an output: repair cost, repair action, physical area in cm²,
-hidden-damage probability, final workshop quotation.
+CarDD annotations are REAL GROUND TRUTH for dataset evaluation. The system
+does not emit repair cost, repair action, workshop quotation, hidden-damage
+probability, or physical area in cm².
 
-## Comparison arms to beat
+## Current comparison arms
 
-> **Current arms (2026-09-22, architecture spec v3).** The legacy
-> `CarddUNet`/`CarddHybrid` pairs below are superseded as *research arms* by
-> the spec-v3 models: **baseline** = `ResNet34UNet`
-> (`ml/models/resnet34_unet.py`), **proposed** = `HybridSegmentation`
-> (`ml/models/hybrid_segmentation.py`). Both were run for 15 epochs (seed 0,
-> full official splits): baseline foreground mIoU 0.6127, hybrid 0.5963 —
-> **preliminary validation only, both still improving at epoch 14, no
-> architecture claimed superior.** The demo default is `pilot15_hybrid`
-> (research plan); the controlled comparison remains the planned 60-epoch /
-> 3-seed run.
+| ID | Design | Status | Best val foreground mIoU | Best epoch |
+|---|---|---|---:|---:|
+| `final60_baseline_seed42` | ResNet34UNet, seed 42 | CONTROLLED | 0.6676585078 | 44 |
+| `final60_baseline_seed1337` | ResNet34UNet, seed 1337 | CONTROLLED | 0.6681153178 | 50 |
+| `final60_hybrid_seed42` | HybridSegmentation, seed 42 | CONTROLLED; default | 0.6701672077 | 49 |
+| `final60_hybrid_seed1337` | HybridSegmentation, seed 1337 | CONTROLLED | 0.6731674075 | 47 |
+| `final100_hybrid_seed42` | HybridSegmentation, seed 42, continuation | EXPLORATORY | 0.6715497971 | 58 |
 
-1. **A1 — current baseline:** `CarddUNet`, softmax CE, 5 epochs
-   (`cardd_baseline_ce`: val mIoU 0.0475, MEASURED, underfit, SUPERSEDED).
-2. **A2 — same harness, more epochs:** separates "underfitting" from
-   "architecture" before the hybrid is credited (PLANNED).
-3. **A3/A4 — proposed:** `CarddHybrid` on the same schedule (A3) and extended
-   (A4). A3 is **done**: `cardd_hybrid_ce` trained 2026-09-21, val mIoU 0.0504 /
-   test mIoU 0.0586 (MEASURED), inference verified through the engine + real-
-   engine E2E and Playwright journeys.
-
-Evidence so far is a **weak positive** on aggregate only: the hybrid remains
-underfit, rare classes sit at IoU 0, and the small-damage slice is ≈0. A
-fuller claim requires the RQ2 confidence-honesty metric to be locked in the
-experiment config and an honest A1-vs-A3 comparison written.
-
-## Out of scope
-
-- **Repair-cost and repair-action prediction.** Removed (ADR 0011); no labels
-  exist. Synthetic price tables are a SYNTHETIC LABEL and are not used.
-- **Hidden-damage risk prediction.** Excluded unless real ground-truth labels
-  become available; synthetic labels do not qualify.
-- **Physical damage area in cm².** An uncontrolled photograph has no scale
-  reference. Only the normalized damage-area ratio is defensible (ADR 0005/
-  0009).
-- **Vehicle-part segmentation.** Not adopted this cycle (ADR 0009); no
-  part-mask source.
-- **Final workshop quotation.** The system produces an estimate of evidence and
-  confidence. The interface must state the difference.
+The four controlled entries use the 60-epoch target configuration and the two
+available seeds. The final-100 entry is not a matched comparison and must retain
+`record_status: PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS`.
 
 ## Open questions
 
-1. What is the operational RQ2 metric ("confidence-honesty")? It must be
-   defined and locked in the experiment config before any number is reported.
-2. Does the hybrid's bottleneck transformer justify its ~1.7× parameter cost on
-   a 4 GB GPU within the training budget? (Empirical — answered by A1/A2/A3/A4.)
-3. If a new damage dataset is ever adopted (e.g., VehiDE), it enters only via a
-   new ADR with licence, label mapping, and split policy.
+1. What exact operational metric will define RQ2 confidence honesty?
+2. Is a third controlled seed required before making a comparative claim?
+3. How should the small-damage slice and per-class performance be reported for
+   the current two-seed evidence?
+4. Can any external dataset be adopted only after licence, label mapping,
+   deduplication, and leakage policy are documented?
+
+## Out of scope
+
+- Repair-cost and repair-action prediction.
+- Hidden-damage risk without real teardown ground truth.
+- Physical damage area in cm² from an uncontrolled photograph.
+- Vehicle-part segmentation for this cycle.
+- Final workshop quotation.

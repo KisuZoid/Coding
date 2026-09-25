@@ -9,11 +9,41 @@ export interface HealthResponse {
   version: string;
 }
 
+export interface ModelInfo {
+  model_id: string;
+  label: string;
+  family: "baseline" | "hybrid";
+  architecture: string;
+  seed: number;
+  configured_epochs: number;
+  status: "CONTROLLED" | "EXPLORATORY";
+  controlled: boolean;
+  available: boolean;
+  checkpoint: string;
+  experiment_id: string;
+  best_val_foreground_miou: number | null;
+  best_epoch: number | null;
+  git_revision: string | null;
+  record_status: string;
+  description: string;
+}
+
+export interface ModelsResponse {
+  models: ModelInfo[];
+  default_model_id: string;
+}
+
 export interface SessionCreated {
   session_id: string;
   status: string;
   created_at: string;
   expires_at: string;
+  model_id: string;
+}
+
+export interface ModelSelectionResponse {
+  session_id: string;
+  model_id: string;
 }
 
 export interface UploadResponse {
@@ -27,6 +57,7 @@ export interface UploadResponse {
 export interface AnalyzeResponse {
   session_id: string;
   status: "OK" | "QUALITY_FAILED";
+  model_id: string | null;
   assistant_message: string;
   asset_id: string;
   quality_status: string;
@@ -83,6 +114,7 @@ export interface ChatMessage {
   preview?: string;
   /** Inline result attachment for an assistant analysis message. */
   overlay_png_base64?: string;
+  model_id?: string | null;
   quality_status?: string;
   quality_reasons?: string[];
   classes_present?: Record<string, string>;
@@ -96,6 +128,7 @@ export interface ChatMessage {
 /** The inspection state returned by GET /inspection/{id} (`state` field). */
 export interface InspectionStateView {
   session_id: string;
+  model_id?: string;
   image_asset_id?: string;
   messages?: ChatMessage[];
   inspection?: InspectionPayload | null;

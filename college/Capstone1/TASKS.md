@@ -1,184 +1,131 @@
 # TASKS.md — AutoInspect-X
 
-Concise task tracker. Current phase and next recommended task are at the top.
-This file replaces the append-only 1,900-line task diary (retirement recorded
-below); keep it brief and current.
+Current tracker for the five-model runtime catalogue, evidence cleanup, and
+final validation. Historical task history remains in Git and the archived
+project documents.
 
-> **Research-integrity note:** the 15-epoch pilot results (`pilot15_baseline`
-> foreground mIoU 0.6127, `pilot15_hybrid` 0.5963) are **preliminary validation
-> observations and are not the final research conclusion.** No architecture is
-> claimed superior until the locked 60-epoch / 3-seed comparison completes.
+> **Integrity rule:** the four 60-epoch-target entries are a controlled
+> two-seed comparison, not a completed three-seed study. The
+> `final100_hybrid_seed42` record is exploratory and partially reconstructed.
+> Do not claim architecture superiority, statistical significance, or completed
+> final-100 training.
 
----
+## Current state
 
-## Current phase
+- Product: photo-first FastAPI + Next.js demo implemented under ADR 0011.
+- Runtime catalogue: five explicit model IDs exposed by `GET /models`.
+- Default: `final60_hybrid_seed42`.
+- Session model selection: persisted before analysis and locked afterward.
+- Active artifacts: best checkpoint plus run record per catalogue entry.
+- Pilot/legacy experiments: archived with provenance; periodic pilot snapshots
+  removed from live storage.
+- Cinematic scene 4: OCR-audited all 240 source frames; 001–084 remain live and
+  085–240 are archived because they contain obsolete repair/cost copy.
+- Documentation and deliverable refresh: **in progress**.
+- Full backend/browser/document validation: **in progress**.
 
-**Phase-I report delivered (Task E) and final revision applied (Task E2).**
-Report + PDF delivered under `Capstone report/` and QC-verified (2026-09-23);
-2026-09-24 revision pass (see Completed) delivered the 78 pp. report with
-manifest-pinned tech stack, expanded Chapter 4, and complete verbatim
-Appendix B listings. **Next recommended task:**
-in-person dry-run of the viva (defend the pilot numbers as preliminary, the
-ADR-0011 scope boundary, and the consent flow), or the locked 60-epoch /
-3-seed comparison that upgrades the pilot observations into a conclusion.
+## Completed in this cleanup
 
-## Completed
+- Added `apps/api/model_catalog.py` and `GET /models`.
+- Added API schemas, model errors, session model selection, and per-model
+  engine caching.
+- Added `model_id` to inspection responses and engine metadata.
+- Added the frontend model selector and model provenance display.
+- Created a transparent partial record for `final100_hybrid_seed42` from the
+  available best/periodic checkpoint metadata.
+- Updated the ignored experiment registry with four controlled and one
+  exploratory catalogue entries.
+- Moved `pilot15_baseline` and `pilot15_hybrid` to `archive/experiments/`.
+- Removed live periodic checkpoints from active experiment and pilot storage
+  directories.
+- Updated code examples, focused tests, e2e checkpoint paths, `.env.example`,
+  local model settings, and the catalogue documentation.
+- Added ADR 0012 for the five-model runtime catalogue and partial final-100
+  record.
+- Added ADR 0013 for the current Dice + Focal objective and marked CE as
+  historical for the current catalogue.
+- OCR-audited all 240 `public/4` frames, retained frames 001–084 in the live
+  scene, archived 085–240 under `archive/cinematic/legacy-public-4/`, and
+  updated the live frame count to 757 total frames.
+- Focused model/API tests, Ruff, mypy, frontend lint, typecheck, and build
+  passed. The focused test run reported 18 passing tests.
 
-- **Research + architecture (Task A-era).** Photo-first scope (ADR 0011),
-  CarddHybrid design (ADR 0010), arch spec v3, and the research report (source
-  of truth) — retained and authoritative.
-- **15-epoch pilots (Task B).** `pilot15_hybrid` (ACTIVE) and `pilot15_baseline`
-  (retained arm) trained on full official CarDD splits, seed 0, recorded in
-  `ml/experiments/registry.json` (git `fb2fb59`).
-- **Model integration (Task C1).** Engine `model_arch` dispatch for
-  `resnet34_unet`/`baseline` and `hybrid`/`hybrid_segmentation` (+ legacy
-  `cardd_*`); container default → `pilot15_hybrid`; registry-backed provenance
-  notes (foreground mIoU); `.env.example`, RUNBOOK, e2e specs, and integration
-  tests updated.
-- **Backend gates (Task C2).** `ruff check` + `ruff format` clean, `mypy` clean
-  (86 files), `pytest` 135 passed.
-- **Directory cleanup (Task C3).** 10 historical experiments → `archive/experiments/`
-  (git-ignored, with logs); periodic checkpoints → `storage/models/pilot15_*`;
-  `train_smoke.py` → `archive/legacy-code/ml/training/`; `.gitignore` +
-  `archive/README.md` updated (legacy model files stay live by design).
-- **Frontend gates (Task C4).** eslint (`--max-warnings=0`), `tsc --noEmit`,
-  `next build` all pass.
-- **Docs rewrite (Task C5).** README.md, TASKS.md, MEMORY.md re-written concise;
-  `docs/research/problem-definition.md` + `implementation-alignment.md`,
-  `docs/architecture/overview.md`, research report §10 addendum updated; 6
-  historical docs archived to `archive/docs/` with live-doc pointers fixed.
-- **Literature review (Task C6).** `docs/research/literature_review.tex` +
-  `references.bib` (30 verified references), compiled with tectonic
-  (IEEEtran.cls + IEEEtran.bst local) → `literature_review.pdf` **10 pages, 0
-  errors**; pilot observations clearly separated from literature findings.
-- **Literature review updates (Task C8).** Author block updated to **Capstone
-  Group 160 — School of Computing Science Engineering and AI, VIT Bhopal
-  University, Sehore**; rebuilt PDF with tectonic. Fixed a latent dangling
-  reference: added `\label{sec:hybrid}` so `\ref{sec:hybrid}` resolves instead
-  of rendering `??` (single ref, both occurrences verified clean in the output).
-- **Model-integration fix (Task D2).** Root cause of the demo "model
-  unavailable" error: the local `.env` still pinned `MODEL_PATH` /
-  `MODEL_VERSION` to the archived `cardd_hybrid_ce` run; the router hid the
-  real reason. Fixed `.env` → `pilot15_hybrid`; `container.py` now resolves
-  the checkpoint CWD-/repo-root-independently and logs the resolved path +
-  registry metadata; `engine.from_checkpoint` accepts a `model` alias and
-  logs arch/base/epoch/device/params + missing/unexpected keys; the router
-  distinguishes `ModelLoadError`/`ModelVersionError` from generic build
-  failures; a startup lifespan check logs a clear error when the checkpoint
-  is absent. Verified: isolated checkpoint load (0 missing/unexpected keys),
-  API POST with a real CarDD photo (dent/scratch/glass shatter/lamp broken,
-  conf 0.858, overlay), and the real browser UI produced the model overlay.
-   New `tests/test_model_integration.py` (9 tests, 144 total green).
-- **Phase-I report (Task E — 2026-09-23).** DSN4091 Phase-I report generated
-  from the sample-report structure and real project evidence: `Capstone
-  report/DSN4091 Capstone Project Phase-I Report - Kislay Anand.docx` +
-  `.pdf` (47 pp. A4: cover, bonafide, acknowledgement, abstract, LOF, TOC,
-  Chapters 1–7, Appendices A/B, references). 21 figures (project screenshots +
-  generated workflow/architecture diagrams), 8 code listings, pilot numbers
-  taken verbatim from `run_record.json`; no secrets, no cost/repair claims
-  (ADR 0011), no Underbelly content. Verified: every TOC/LOF page number
-  matches the rendered page, each chapter starts a fresh page, front-matter
-  footers roman / body decimal from 1, no blank/missing-image pages, code
-lines ≤78 chars (no wrap). Build scripts live in `/tmp/opencode/`
-   (`build_report.py`, `parse_pdf.py`, `verify_pdf.py`) — not part of the repo.
-- **Final report revision (Task E2 — 2026-09-24).** Surgical python-docx pass
-   over the delivered DOCX (`/tmp/opencode/revise_report.py`, out-of-repo):
-   front matter (cover/bonafide/ack/abstract/LOF/TOC) preserved byte-identical
-   intent; Chapter 3 tech-stack table rebuilt as precise 5-column
-   Layer | Technology | Version | Purpose | Evidence with versions read only
-   from repo manifests (requirements-ci.txt pins, package.json+lock,
-   pyproject.toml, uv.lock); Chapter 4 expanded to eight sections (4.4 Data
-   Flow, 4.5 ML/CV Methodology, 4.7 Novelty inserted; 4.6 UI renamed) incl. the
-   real folder tree; Chapter 5 pseudo-code replaced with Appendix B pointers;
-   Appendix B = 14 complete verbatim listings (source path + true line range
-   per caption, mono size auto-scaled so no line wraps). Result: **78 pp. A4**,
-   22 LOF figures, TOC/LOF page numbers converged via two-pass LibreOffice
-   render (body offset = physical page 9). Pre-revision backup removed after
-   validation. OLD 47 pp. report superseded; the pre-revision docx is recoverable
-   only from git history if ever needed.
+## Active
 
+1. Replace remaining live pilot/default references in root docs, research
+   alignment docs, archive register, and any overlooked scripts.
+2. Reconcile the report, presentation, literature-review artifacts, and any
+   generated PDFs with the current five-model catalogue.
+3. Run the full backend pytest suite and Playwright suite.
+4. Recheck ignored artifacts, local configuration, generated outputs, and
+   `git status --short --branch` before handoff.
 
-## In progress
+## Current model evidence
 
-- **Scoped git commits (Task C7).** Multiple reviewable commits under
-  `college/Capstone1/...` (never `git add .`).
-- **Final verification report (Task D).** Sections A–I with exact paths/counts.
+| ID | Architecture | Seed | Status | Best val foreground mIoU | Best epoch | Record state |
+|---|---|---:|---|---:|---:|---|
+| `final60_baseline_seed42` | ResNet34UNet | 42 | CONTROLLED | 0.6676585078 | 44 | recorded |
+| `final60_baseline_seed1337` | ResNet34UNet | 1337 | CONTROLLED | 0.6681153178 | 50 | recorded |
+| `final60_hybrid_seed42` | HybridSegmentation | 42 | CONTROLLED | 0.6701672077 | 49 | recorded; early stop 59 |
+| `final60_hybrid_seed1337` | HybridSegmentation | 1337 | CONTROLLED | 0.6731674075 | 47 | recorded; early stop 57; resume metadata retained |
+| `final100_hybrid_seed42` | HybridSegmentation | 42 | EXPLORATORY | 0.6715497971 | 58 | `PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS`; `completed: false` |
+
+The final-100 record observed periodic checkpoints from epochs 54 through 84
+but lacks complete history, continuation metrics, and termination reason.
+
+## Documentation deliverables
+
+- `README.md` — current product, catalogue, evidence, and artifact policy.
+- `RUNBOOK.md` — local operation, API selection, training, and validation.
+- `MEMORY.md` — compact current facts and unresolved decisions.
+- `AUTOINspectX_PROJECT_STATE.md` — consolidated state snapshot.
+- `docs/architecture/overview.md` — current system architecture.
+- `docs/research/implementation-alignment.md` and
+  `docs/research/problem-definition.md` — research/code reconciliation.
+- `AutoInspect-X_Research_Report_Corrected.md` — research source of truth;
+  current catalogue correction must remain clearly dated and qualified.
+- `AutoInspect-X_Capstone.pptx` and `Capstone report/` — regenerate or amend
+  only from verified current evidence. Both were reconciled against the
+  five-entry catalogue on 2026-09-25: the report is 82 A4 pages with a converged
+  TOC, LOF and 15 verified code listings, and the deck is 17 slides with the
+  pilot-era metrics, three-seed claim and stale repository tree removed.
+- `docs/research/literature_review.tex/.pdf` — preserve verified literature;
+  do not add model-performance claims without sources. Recompiled with Tectonic
+  on 2026-09-25: 10 pages, 30 references, no unresolved citations.
+
+## Known limitations
+
+- Only two controlled seeds are present; a third seed is not present.
+- RQ2 confidence-honesty operational definition and research summary are
+  pending.
+- The final-100 history cannot be reconstructed beyond the artifacts listed in
+  its run record.
+- OCR completed the textual audit of the cinematic frames; direct visual
+  interpretation was unavailable in the current tool environment.
+- Single-photo outputs do not establish hidden damage, physical scale, repair
+  action, or cost.
+
+## Validation status
+
+Run on 2026-09-25 with the `ai` conda environment and Node 22:
+
+- `ruff check` and `ruff format --check` clean; `mypy` strict clean over
+  `apps/ ml/ tests/`.
+- Full `pytest tests/`: 147 passed.
+- Frontend `lint --max-warnings=0`, `typecheck`, `build`: pass.
+- Full Playwright run: 34 passed, 8 skipped (intentional desktop-only engine
+  journeys on tablet and mobile).
+- Literature review compiles to 10 pages with no unresolved citations.
+- Report and deck regenerate with converged pagination and no stale
+  pilot-era claim.
+
+Two environment-driven defects were fixed rather than papered over: the
+git-ignored `.env` leaked `MODEL_ID` into tests of the legacy checkpoint route,
+and the responsive status chip was asserted as visible on viewports where it is
+deliberately hidden.
 
 ## Next recommended task
 
-1. Commit the cleanup/integration, doc/lit-review, and model-integration-fix
-   changes (Task C7).
-2. **60-epoch / 3-seed comparison** of `ResNet34UNet` vs `HybridSegmentation`
-   on the locked schedule, then lock the RQ2 confidence-honesty operational
-   definition and write `research_summary.md`. **This is the blocker for any
-   architecture claim.**
-
-## Research experiments (registry)
-
-| Experiment | Model | Status | Foreground mIoU (val, @ep14) | Notes |
-|---|---|---|---|---|
-| `pilot15_hybrid-20260922-115320` | `hybrid` | ACTIVE | 0.5963 | demo default; ~27.9M params; seed 0 |
-| `pilot15_baseline-20260922-110722` | `resnet34_unet` | SUPERSEDED | 0.6127 | retained baseline arm; ~24.6M params; seed 0 |
-| `cardd_hybrid_ce-20260921-162128` | `cardd_hybrid` | SUPERSEDED | val mIoU 0.0504 / test 0.0586 | demo-era, archived |
-| `cardd_baseline_ce-*` | `cardd_unet` | SUPERSEDED | 0.0475 | 5-epoch underfit, archived |
-| `smoke_*`, `phase*` runs | — | SUPERSEDED | — | historical, `archive/experiments/` |
-
-All rows: MEASURED scores from `run_record.json` / `registry.json` (git-ignored).
-
-## Product integration
-
-- **API:** FastAPI; `container.py` resolves checkpoint via `MODEL_PATH` /
-  `MODEL_VERSION` and builds provenance notes from the registry; engine emits
-  MODEL PREDICTION payload (mask, area ratios, confidence, `low_confidence`).
-- **Frontend:** Next.js — photo → overlay → per-class ratios → honesty flags →
-  grounded chat (LangChain ChatGroq or offline stub). e2e journeys cover upload,
-  analysis, and continued chat.
-- **Honesty contract:** enforced by engineered labels + tests
-  (`tests/`, engine flags). No cost/severity/physical-area outputs anywhere.
-
-## Documentation (current)
-
-- `README.md` — overview, workflow, architecture, classes, pilots, storage &
-  archive policy, limitations (re-written Task C5).
-- `RUNBOOK.md` — run commands + troubleshooting (demo default pilot15_hybrid).
-- `MEMORY.md` — current state only (re-written Task C5).
-- `docs/architecture/cnn-transformer-segmentation.md` — spec v3 (authoritative
-  architecture doc).
-- `AutoInspect-X_Research_Report_Corrected.md` — research source of truth
-  (incl. §10 addendum on the pilots).
-- `docs/research/literature_review.tex` + `.pdf` — 10 pp. IEEE review.
-
-## Known issues
-
-- PhD-claimed model quality blocked on the 60-epoch / 3-seed run — the pilots
-  are an intermediate check only.
-- `cardd_*` legacy checkpoints load with a base-check guard (research checkpoints
-  store `base=0`); engine tolerates both, but mixing is intentionally rejected.
-  **2026-09-22 resolved:** `.env` previously pointed at the archived
-  `cardd_hybrid_ce` checkpoint, causing the demo "model unavailable" error.
-  Now points at `pilot15_hybrid`; path resolution is CWD-independent and the
-  missing-checkpoint reason is logged (see Task D2).
-- Registry entries carry `data_root=/content/data/CarDD_COCO` (training-env
-  path); data location is not part of inference resolution.
-
-## Deferred
-
-- MC Dropout / Deep Ensembles for RQ2 (ADR required before use).
-- Focal loss as an alternative objective (decision to be recorded if adopted).
-- VehiDE cross-dataset check; CrashCar101 pre-training/augmentation
-  (licence-review first).
-- Expanding the hybrid to heavier attention stages (VRAM- and schedule-bound).
-- Multi-view fusion (MVA-CDD direction) — out of single-photo scope.
-
----
-
-## Retirement record
-
-The previous numbered log (1,900 lines, Tasks 1–N from 2026-09-07 onward) was
-replaced on **2026-09-22** by this concise tracker. It was a dated diary whose
-content is now stale (calls CarddHybrid/`cardd_hybrid_ce` the current model and
-the old experiment layout). Nothing was deleted from the repo; the historical
-record lives in `AutoInspect-X_Research_Report_Corrected.md`, `ADRs`,
-`AUTOinspectX_PROJECT_STATE.md`, and `git log`, and per-task provenance remains
-in the re-written docs above. The 15-epoch pilot numbers above are preliminary;
-see the integrity note at the top.
+Hand the working tree to the user for review, then decide whether the
+report/deck generator should be committed so the deliverables are reproducible
+from the repository alone. Do not commit unless explicitly requested.

@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api import __version__
 from apps.api.container import build_container
-from apps.api.routers import chat, health, inspection
+from apps.api.routers import chat, health, inspection, models
 from apps.api.settings import Settings, get_settings
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     if not checkpoint.is_file():
         logger.error(
             "segmentation checkpoint is missing at startup: %s — /analyze will return "
-            "MODEL_UNAVAILABLE (HTTP 500). Set MODEL_PATH (or restore the default) to a "
-            "valid git-ignored checkpoint under ml/experiments/.",
+            "MODEL_UNAVAILABLE (HTTP 500). Set MODEL_ID to an active catalogue ID (or "
+            "MODEL_PATH for a legacy custom checkpoint).",
             checkpoint,
         )
     else:
@@ -57,10 +57,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
     app.include_router(health.router)
+    app.include_router(models.router)
     app.include_router(inspection.router)
     app.include_router(chat.router)
     return app

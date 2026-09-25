@@ -434,10 +434,7 @@ def save_checkpoint(
             "ema_state": ema.state_dict(),
             "optimizer_state": optimizer.state_dict(),
             "scaler_state": scaler.state_dict() if scaler is not None else None,
-            "config": {
-                k: str(v) if isinstance(v, Path) else v
-                for k, v in asdict(config).items()
-            },
+            "config": {k: str(v) if isinstance(v, Path) else v for k, v in asdict(config).items()},
             "class_weights": class_weights,
             "git_revision": git_revision(),
         },
@@ -644,9 +641,7 @@ def main() -> None:
         start_epoch = int(checkpoint["epoch"]) + 1
         best_miou = float(checkpoint.get("best_val_fg_miou", -1.0))
         best_epoch = int(checkpoint.get("best_epoch", checkpoint["epoch"]))
-        epochs_since_improvement = int(
-            checkpoint.get("epochs_since_improvement", 0)
-        )
+        epochs_since_improvement = int(checkpoint.get("epochs_since_improvement", 0))
 
         print(
             f"resuming from {resume_path} "

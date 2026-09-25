@@ -59,9 +59,16 @@ share the same state-dict contract surface (keys `model_state`, `base`,
 - `CarddHybrid` inherits the documented argmax-overlap limitation on stacked
   CarDD masks (same loss/decode as ADR 0008) and the honesty boundary: masks
   are model predictions, never verified damage extent.
-- Honest-training rule holds: `cardd_hybrid_ce` was trained and its inference
-  verified real on 2026-09-21 (val mIoU 0.0504 / test 0.0586, MEASURED, see the
-  run registry and the real-engine test gate at
-  `tests/test_e2e_integration.py::test_full_journey_happy_path_with_real_engine`
+- Honest-training rule holds for this historical run: `cardd_hybrid_ce` was
+  trained and its inference verified real on 2026-09-21 (val mIoU 0.0504 /
+  test mIoU 0.0586, MEASURED, see the run registry and the real-engine test
+  gate at `tests/test_e2e_integration.py::test_full_journey_happy_path_with_real_engine`
   and the Playwright inspection-journey spec). Claim level stays capped at the
   measured numbers; the A1-vs-A3 write-up and RQ2 metric remain open.
+
+## Current catalogue status (2026-09-25)
+
+ADR 0012 supersedes the single-checkpoint default described above. The runtime
+now uses the five-model catalogue, with `final60_hybrid_seed42` as its default;
+the current arms are `ResNet34UNet` and `HybridSegmentation`. The historical
+`cardd_hybrid_ce` path remains provenance and is not a current product default.

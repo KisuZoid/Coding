@@ -18,8 +18,25 @@ export async function openDemo(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("AutoInspect-X").first()).toBeVisible();
   await page.getByRole("link", { name: "Skip to demo" }).click();
-  await expect(page.getByText("API online")).toBeVisible();
+  await expectConnectionOnline(page);
   await expect(page.getByPlaceholder(COMPOSER_PLACEHOLDER)).toBeVisible();
+}
+
+/** Width at which the header status chip is laid out (Tailwind `sm`). */
+const STATUS_CHIP_MIN_WIDTH = 640;
+
+/**
+ * The header connectivity chip is hidden below the `sm` breakpoint so the
+ * model selector keeps the room; on those viewports the composer's
+ * "API is not reachable" notice carries the signal instead. Assert the chip is
+ * always present, and visible only where the layout actually shows it.
+ */
+export async function expectConnectionOnline(page: Page): Promise<void> {
+  const status = page.getByText("API online");
+  await expect(status).toBeAttached();
+  if ((page.viewportSize()?.width ?? 0) >= STATUS_CHIP_MIN_WIDTH) {
+    await expect(status).toBeVisible();
+  }
 }
 
 export async function sendTurn(page: Page, text: string): Promise<void> {

@@ -16,11 +16,49 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class ModelInfo(BaseModel):
+    model_id: str
+    label: str
+    family: str
+    architecture: str
+    seed: int
+    configured_epochs: int
+    status: Literal["CONTROLLED", "EXPLORATORY"]
+    controlled: bool
+    available: bool
+    checkpoint: str
+    experiment_id: str
+    best_val_foreground_miou: float | None = None
+    best_epoch: int | None = None
+    git_revision: str | None = None
+    record_status: str
+    description: str
+
+
+class ModelsResponse(BaseModel):
+    models: list[ModelInfo]
+    default_model_id: str
+
+
+class SessionCreateRequest(BaseModel):
+    model_id: str | None = None
+
+
 class SessionCreated(BaseModel):
     session_id: str
     status: str
     created_at: str
     expires_at: str
+    model_id: str
+
+
+class ModelSelectionRequest(BaseModel):
+    model_id: str
+
+
+class ModelSelectionResponse(BaseModel):
+    session_id: str
+    model_id: str
 
 
 class UploadResponse(BaseModel):
@@ -43,6 +81,7 @@ class AnalyzeResponse(BaseModel):
 
     session_id: str
     status: Literal["OK", "QUALITY_FAILED"]
+    model_id: str | None = None
     assistant_message: str
     # True when the live LangChain assistant was unavailable and a clearly
     # offline, deterministic evidence summary/retake guidance was used instead.

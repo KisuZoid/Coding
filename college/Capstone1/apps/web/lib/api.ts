@@ -8,6 +8,8 @@ import type {
   ConsentResponse,
   HealthResponse,
   InspectionStateResponse,
+  ModelSelectionResponse,
+  ModelsResponse,
   SessionCreated,
   UploadResponse,
 } from "./types";
@@ -67,8 +69,25 @@ export function getHealth(): Promise<HealthResponse> {
   return request<HealthResponse>("/health");
 }
 
-export function createSession(): Promise<SessionCreated> {
-  return request<SessionCreated>("/inspection/session", { method: "POST" });
+export function getModels(): Promise<ModelsResponse> {
+  return request<ModelsResponse>("/models");
+}
+
+export function createSession(modelId?: string): Promise<SessionCreated> {
+  return request<SessionCreated>("/inspection/session", {
+    method: "POST",
+    body: modelId ? JSON.stringify({ model_id: modelId }) : undefined,
+  });
+}
+
+export function selectModel(
+  sessionId: string,
+  modelId: string,
+): Promise<ModelSelectionResponse> {
+  return request<ModelSelectionResponse>(`/inspection/${sessionId}/model`, {
+    method: "PATCH",
+    body: JSON.stringify({ model_id: modelId }),
+  });
 }
 
 export function getInspection(sessionId: string): Promise<InspectionStateResponse> {

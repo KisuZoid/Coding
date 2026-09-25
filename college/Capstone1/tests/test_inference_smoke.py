@@ -1,8 +1,7 @@
 """Real-artefact smoke test (Phase D).
 
-Exercises an actual CarDD checkpoint in every locally present experiment
-directory (the git-ignored experiments dir): the legacy CarddUNet baseline, the
-ResNet34-U-Net pilot baseline, and the CNN-transformer hybrid pilot. Each is
+Exercises an actual CarDD checkpoint in the active controlled baseline and
+hybrid runs, plus an archived legacy checkpoint when present. Each is
 skipped (never failed) when its artefact is absent; existence is verified at
 runtime, not assumed. This is the ADR 0003 "loud artefact check".
 """
@@ -47,25 +46,25 @@ _SMOKE_TARGETS = [
         ),
     ),
     pytest.param(
-        "pilot15_baseline",
+        "final60_baseline_seed42",
         ResNet34UNet,
         0,
-        "pilot15_baseline",
-        id="resnet34-unet-pilot",
+        "final60_baseline_seed42",
+        id="resnet34-unet-final60",
         marks=pytest.mark.skipif(
-            _resolve_checkpoint("pilot15_baseline") is None,
-            reason="real ResNet34-U-Net pilot checkpoint absent",
+            _resolve_checkpoint("final60_baseline_seed42") is None,
+            reason="active ResNet34-U-Net checkpoint absent",
         ),
     ),
     pytest.param(
-        "pilot15_hybrid",
+        "final60_hybrid_seed42",
         HybridSegmentation,
         0,
-        "pilot15_hybrid",
-        id="hybrid-pilot",
+        "final60_hybrid_seed42",
+        id="hybrid-final60",
         marks=pytest.mark.skipif(
-            _resolve_checkpoint("pilot15_hybrid") is None,
-            reason="real hybrid pilot checkpoint absent",
+            _resolve_checkpoint("final60_hybrid_seed42") is None,
+            reason="active hybrid checkpoint absent",
         ),
     ),
 ]

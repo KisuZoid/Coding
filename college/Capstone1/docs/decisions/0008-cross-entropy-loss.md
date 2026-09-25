@@ -1,6 +1,8 @@
 # ADR 0008 — Use softmax cross-entropy over the argmax class target
 
-Status: **Accepted** (2026-09-08). Supersedes the BCE options in ADR 0007.
+Status: **Accepted for the historical Phase 8 path; superseded for the current
+controlled catalogue by ADR 0013** (2026-09-25). Supersedes the BCE options in
+ADR 0007.
 
 ## Context
 
@@ -56,3 +58,14 @@ matched pixels (over the (B, H, W) class-index map) by the *channel* count
 corrected value; earlier phase4-era pxAcc numbers in `run_record.json` used the
 self-consistent path and were not affected by this bug (checked: phase4 did not
 report pxAcc the same way).
+
+## Current catalogue status (2026-09-25)
+
+The current controlled `final60_*` run records were produced from code revision
+`591d7d2`, whose training entrypoint calls `ml.training.loss.dice_focal_loss`.
+That objective is the 0.50 foreground soft-Dice + 0.50 multiclass-Focal
+deep-supervised loss recorded in ADR 0013. The CE decision in this ADR remains
+the historical provenance for the earlier Phase 8 runs; it must not be used to
+describe the current catalogue. The run-record schema does not currently carry
+an explicit objective field, so this distinction is recorded as code-revision
+provenance.

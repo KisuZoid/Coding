@@ -18,7 +18,7 @@ Example (`ai` env):
 
     python ml/evaluation/evaluate_run.py \\
         --data-root datasets/CarDD_COCO \\
-        --run-dir ml/experiments/pilot15_hybrid \\
+        --run-dir ml/experiments/final60_hybrid_seed42 \\
         --num-examples 8
 """
 

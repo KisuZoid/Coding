@@ -129,7 +129,7 @@ The hybrid model is therefore not being introduced simply because "Transformers 
                               ▼
                  SEGMENTATION DECODER
            (U-Net style, skip connections,
-              deep supervision at 1–2 stages)
+              deep supervision at two stages)
                               │
                 ┌─────────────┴─────────────┐
                 ▼                           ▼
@@ -210,8 +210,9 @@ Local representation ───────┐
 Global representation ──────┘
 ```
 
-The exact implementation (concatenation with projection, additive fusion, or gated fusion) is selected through the feasibility experiments described in Section 19, not assumed in advance.
-The primary implementation is now fixed as **projected element-wise addition at the bottleneck**:
+The exact implementation is now fixed as **projected element-wise addition at
+the bottleneck**. The alternatives remain secondary feasibility questions, not
+variables in the current catalogue:
 
 ```text
 CNN C5:  [B, 512, 16, 16]
@@ -238,7 +239,11 @@ The decoder converts the fused representation back into a high-resolution spatia
 
 A U-Net-style decoder with skip connections is appropriate conceptually because damage boundaries and small regions require recovery of spatial detail.
 
-**Upgrade — deep supervision.** Auxiliary segmentation heads are attached at one or two intermediate decoder resolutions, each contributing a down-weighted auxiliary loss term summed with the main loss. This is a standard, low-cost technique for improving recovery of small objects, which directly targets the project's stated secondary research focus (Section 8).
+**Upgrade — deep supervision.** Auxiliary segmentation heads are attached at two
+intermediate decoder resolutions, each contributing a down-weighted auxiliary
+loss term summed with the main loss. This is a standard, low-cost technique for
+improving recovery of small objects, which directly targets the project's
+stated secondary research focus (Section 8).
 
 The decoder produces a seven-channel segmentation representation:
 
@@ -260,7 +265,11 @@ These classes correspond to the existing CarDD task definition.
 
 **No separate trainable confidence head is used in the first implementation.** Confidence is derived from the segmentation logits so that it does not require additional confidence labels, which CarDD does not provide.
 
-The confidence signal connects the vision model to the product-level requirement that the chatbot guide the user when a prediction is uncertain. It is computed from the model's output distribution and calibrated using validation data only.
+The confidence signal connects the vision model to the product-level requirement
+that the chatbot guide the user when a prediction is uncertain. It is computed
+from the model's output distribution and exposed with a deterministic
+`low_confidence` flag. Calibration and reliability measurement are planned RQ2
+work, not completed behaviour of the current catalogue.
 
 ---
 
@@ -330,7 +339,8 @@ These are evaluated as contributing factors, not as the primary contribution:
 
 - Boundary-aware loss improves IoU specifically on thin/elongated damage classes (crack, scratch).
 - Deep supervision improves recovery of small-area damage instances.
-- Test-time augmentation and weight averaging (EMA) provide a measurable, architecture-independent accuracy gain at negligible cost.
+- Test-time augmentation and calibration are optional secondary analyses;
+  their value is not assumed.
 
 The research should test all of the above empirically rather than assuming any of them will improve performance.
 
@@ -350,17 +360,25 @@ CNN/U-Net
 7-channel damage segmentation
 ```
 
-**Important correction to the original plan.** The existing recorded checkpoint was produced with a short, random-initialization training run and is treated as a historical smoke-test artifact, not as the controlled research baseline. Its failure mode is consistent with undertraining and unaddressed class imbalance — not necessarily a lack of global context. If the ablation in Section 12 compares the hybrid model against this checkpoint, a hybrid-model improvement cannot be attributed to the Transformer component with confidence, because the baseline was never given a fair chance to succeed on its own terms.
+**Current controlled baseline.** The current catalogue uses
+`ResNet34UNet` under the same dataset, preprocessing, optimizer, EMA,
+augmentation, and deep-supervision contract as `HybridSegmentation`. The
+current trainer uses the Dice + Focal objective documented in ADR 0013; the
+historical CE decision in ADR 0008 applies to earlier runs. The old compact
+`CarddUNet` checkpoint remains a historical smoke-test artifact and is not a
+current comparator.
 
-**The baseline must therefore be re-trained before the ablation is run**, using the same training-procedure corrections applied to the hybrid model where they are architecture-independent:
+The controlled comparison is therefore between two current records under the
+same training procedure:
 
-- pretrained ImageNet encoder,
-- Dice + Focal (+ boundary) loss,
-- class-balanced sampling,
-- full training schedule with early stopping on validation mIoU,
-- identical augmentation policy.
+- ImageNet-pretrained ResNet34 encoder,
+- foreground soft Dice + multiclass Focal loss,
+- class-aware sampling,
+- a 60-epoch target schedule with early stopping,
+- identical augmentation and EMA policy.
 
-Only the Transformer + fusion + deep-supervision components should differ between the corrected baseline and the proposed model. This keeps the ablation controlled and ensures it answers the intended question: *does global contextual modelling help*, not *does fixing the training procedure help* (which is a separate, already-known answer).
+Only the Transformer, additive fusion, and their resulting parameterization
+should differ between the current baseline and the proposed model.
 
 ---
 
@@ -376,8 +394,8 @@ Lightweight Transformer
 Feature Fusion
       +
 Segmentation Decoder (with deep supervision)
-      +
-Confidence Head
+       +
+      Logit-derived confidence signal
 ```
 
 The proposed model should be evaluated using the same dataset protocol, preprocessing assumptions, and evaluation metrics as the corrected baseline so that the comparison remains controlled.
@@ -414,7 +432,15 @@ The splits are already separated in the dataset.
 
 Use the training split for parameter learning, augmentation, and optimization.
 
-**Upgrade — targeted synthetic augmentation for rare classes.** For the classes with the lowest instance counts (tire flat: 225 instances; crack; lamp broken), copy-paste augmentation may be used: damage instances are cropped using their existing ground-truth masks and composited onto other training images at plausible scale/location. Any image containing a copy-pasted instance must be tagged as synthetic-augmented in the training manifest, consistent with the project's existing REAL/WEAK/SYNTHETIC/DERIVED labelling discipline. This technique augments the training set only — it must never be applied to validation or test data.
+**Optional secondary augmentation — not part of the current run contract.**
+For the classes with the lowest instance counts (tire flat: 225 instances;
+crack; lamp broken), a future copy-paste experiment may crop damage instances
+using their existing ground-truth masks and composite them onto other training
+images at plausible scale/location. Any image containing a copy-pasted
+instance must be tagged as synthetic-augmented in the training manifest,
+consistent with the project's existing REAL/WEAK/SYNTHETIC/DERIVED labelling
+discipline. This technique augments the training set only and must never be
+applied to validation or test data.
 
 ### Validation
 
@@ -446,20 +472,25 @@ Report IoU/Dice separately for dent, scratch, crack, glass shatter, lamp broken,
 
 Where the annotation data supports it, group damage instances by mask area (small / medium / large) and compare performance across groups. This allows the research to determine whether the hybrid model is particularly useful for small/fine-grained damage.
 
-### Statistical robustness — upgrade
+### Statistical robustness — current limitation
 
-Single training runs on a dataset of this size can vary meaningfully with random seed and data ordering. Each configuration in the core ablation (baseline and hybrid) should be trained with 2–3 different random seeds, reporting mean ± standard deviation per metric. This is what allows a claim such as "the hybrid model improved mIoU" to be distinguished from ordinary run-to-run noise.
+The current catalogue contains two available seeds (`42` and `1337`) for
+both architectures. This supports a controlled two-seed record, but not a
+completed three-seed study or a statistical-superiority claim. A third seed and
+an aggregate summary remain open work.
 
-### Evaluation-time techniques — upgrade
+### Evaluation-time techniques — current decision
 
-The following are applied identically to both the corrected baseline and the proposed model at evaluation time, so they do not confound the architectural comparison:
+The current controlled records use EMA weights for validation and checkpoint
+selection. TTA is not part of the recorded primary evaluation; it may be tested
+as a separate future experiment.
 
-- **Test-time augmentation (TTA):** predictions averaged over the original image and a horizontal flip (optionally 90° rotations).
-- **Exponential moving average (EMA) weights:** the checkpoint used for evaluation is the EMA of training weights, not the final raw weights.
+### Confidence calibration (planned)
 
-### Confidence calibration (optional)
-
-If time permits, a reliability diagram or expected calibration error (ECE) may be reported to establish whether the confidence head's outputs (Section 5.5) are trustworthy enough to drive downstream chatbot behavior. This is a secondary, non-essential analysis.
+RQ2 still requires a locked operational definition and calibration/reliability
+analysis. The current engine reports softmax-derived confidence and a
+`low_confidence` flag; neither is a validated real-world reliability measure by
+itself.
 
 ### Efficiency
 
@@ -469,34 +500,23 @@ Also record parameter count, inference latency, training time, and GPU memory us
 
 ## 12. Ablation Strategy
 
-A small ablation study should be used to establish whether the Transformer component actually contributes, using the **corrected** baseline described in Section 9.1.
-
-A minimal design is:
+The active catalogue comparison uses two current arms:
 
 ```text
-Experiment A:
-Corrected CNN/U-Net baseline
-(pretrained encoder, Dice+Focal loss, full schedule)
+Experiment B42/B1337:
+ResNet34UNet baseline (seed 42/1337)
 
-Experiment B:
-Experiment A + Lightweight Transformer + Fusion
+Experiment H42/H1337:
+HybridSegmentation (seed 42/1337)
 ```
 
-If useful, an additional controlled experiment can evaluate the effect of individual upgrades in isolation:
+Both arms use the same data, split, optimizer, Dice + Focal objective,
+augmentation, EMA policy, and checkpoint-selection rule. The difference is the
+Transformer and additive fusion path.
 
-```text
-Experiment C:
-Experiment B + boundary loss
-
-Experiment D:
-Experiment B + deep supervision
-```
-
-The number of experiments should remain small enough to preserve experimental control and sufficient compute for repeatable, multi-seed runs. The purpose of the ablation is to answer:
-
-> **Did the added global-context component improve segmentation, or did the improvement come from an unrelated architectural or training-procedure change?**
-
-Keeping Experiment A methodologically identical to Experiment B except for the Transformer/fusion component is what makes this question answerable.
+Boundary loss, copy-paste augmentation, TTA, and additional deep-supervision
+variants are future ablations, not measured current catalogue arms. No claim is
+made that any of those future variants improved performance.
 
 ---
 
@@ -528,14 +548,14 @@ The training code itself should remain unchanged across environments. Kaggle por
 
 ### Training-time upgrades (apply to both baseline and hybrid where architecture-independent)
 
-- **Loss:** Dice + Focal, with an optional boundary-aware term (edge-weighted loss computed from a Sobel/Laplacian-derived boundary map of the ground-truth mask) to specifically target thin-structure classes (crack, scratch).
-- **Sampling:** class-weighted / oversampled batches so rare classes appear proportionally more often than their raw frequency.
-- **Augmentation:** flips, rotation, brightness/contrast jitter, scale jitter; optional copy-paste augmentation for the rarest classes (Section 10).
-- **Deep supervision:** auxiliary losses at 1–2 intermediate decoder resolutions, down-weighted relative to the main loss.
-- **EMA:** maintained throughout training; used for checkpoint selection and final evaluation.
-- **Mixed precision:** used throughout to fit larger batch sizes and the Transformer component within available GPU memory.
-- **Checkpointing:** saved every N epochs (not only best-val), given session-limited cloud environments.
-- **Metric tracking:** per-class IoU and small-damage IoU logged every epoch, not only mean IoU, so that a dead class is visible immediately rather than hidden inside an aggregate metric.
+- **Loss:** 0.50 foreground soft Dice + 0.50 multiclass Focal, with the recorded class weights and reduced background weight (ADR 0013). Boundary loss is not part of the current primary experiment.
+- **Sampling:** class-aware sampling on the training split only.
+- **Augmentation:** random horizontal flip, small affine rotation/scale jitter, and mild brightness/contrast jitter; no copy-paste augmentation is part of the current run contract.
+- **Deep supervision:** auxiliary losses at 1/4 and 1/8 resolution with weights `0.75 / 0.15 / 0.10`.
+- **EMA:** maintained throughout training and used for validation, checkpoint selection, and the saved artifact.
+- **Mixed precision:** used during training to fit the controlled models within available GPU memory.
+- **Checkpointing:** periodic snapshots are written during training, while active experiment storage retains only the best checkpoint and run record.
+- **Metric tracking:** per-class IoU and Dice are recorded during validation; the existing controlled records do not contain a separate small-damage-slice field.
 
 ---
 
@@ -611,10 +631,10 @@ Bad-photo detection (blur, poor exposure, wrong framing) is handled by lightweig
 
 - professional narration of the structured findings — produced automatically, every time segmentation succeeds, using LangChain with a professional-inspector persona rather than a hand-written template,
 - automatic retake guidance when the image-quality gate fails,
-- automatic clarification prompts when the confidence head reports low confidence,
+- automatic clarification prompts when the confidence signal reports low confidence,
 - open-ended follow-up conversation, user-initiated.
 
-The LLM must not independently invent a damage class or confidence level unsupported by the vision model's structured output. The confidence head (Section 5.5) is what allows the "guide the user if the photo is not clear" requirement to be driven by the model's own uncertainty rather than by separate, duplicated logic in the conversational layer.
+The LLM must not independently invent a damage class or confidence level unsupported by the vision model's structured output. The confidence signal (Section 5.5) is what allows the "guide the user if the photo is not clear" requirement to be driven by the model's own uncertainty rather than by separate, duplicated logic in the conversational layer.
 
 ---
 
@@ -639,13 +659,11 @@ mean probability of the predicted class
 over pixels belonging to that region
 ```
 
-Also calculate normalized entropy as an uncertainty diagnostic.
-
-Temperature scaling is fitted on the validation split only.
-
-The calibrated region confidence is used by the product layer.
-
-The test set is never used to select or calibrate the confidence threshold.
+For the current implementation, the product exposes the mean predicted-class
+probability for each connected region and a deterministic low-confidence count.
+Temperature scaling and reliability measurement are planned RQ2 work and are
+not part of the current primary run. The test set is never used to select or
+calibrate a confidence threshold.
 
 A low-confidence prediction means:
 
@@ -673,7 +691,8 @@ Do not claim:
 
 Do not claim explicit vehicle-part recognition unless corresponding supervision exists.
 
-Do not claim that the confidence head's scores are a validated measure of real-world reliability unless calibration has actually been measured (Section 11).
+Do not claim that the confidence signal is a validated measure of real-world
+reliability unless calibration has actually been measured (Section 11).
 
 The defensible statement is:
 
@@ -692,11 +711,14 @@ A lightweight CNN–Transformer hybrid segmentation architecture tailored to veh
 - overall segmentation quality,
 - per-damage-class performance,
 - small-damage performance,
-- the individual contribution of supporting techniques (boundary loss, deep supervision, TTA/EMA) via ablation,
+- planned analysis of supporting techniques through future ablations,
 - statistical robustness across multiple seeds,
 - computational efficiency.
 
-The research contribution is therefore the **design, controlled evaluation, and analysis of the hybrid approach for this specific task** — including establishing, via ablation, which part of any observed improvement is attributable to global contextual modelling versus general training-procedure corrections.
+The current catalogue establishes a controlled two-architecture comparison;
+it does not yet establish ablation attribution or architecture superiority.
+The research contribution is therefore the **design, controlled evaluation, and
+planned analysis** of the hybrid approach for this specific task.
 
 ---
 
@@ -722,19 +744,21 @@ The research contribution is therefore the **design, controlled evaluation, and 
 - Primary fusion: projected CNN bottleneck + Transformer output by element-wise addition
 - Decoder: U-Net-style, bilinear upsampling + convolution blocks
 - Deep supervision: auxiliary heads at 1/4 and 1/8 resolution
-- Core loss: 0.50 Dice + 0.50 multiclass Focal
-- Confidence: derived from calibrated segmentation logits; no separate trainable confidence head
+- Core loss: 0.50 Dice + 0.50 multiclass Focal (ADR 0013)
+- Confidence: derived from segmentation logits; no separate trainable confidence head
 - Primary test evaluation: single-scale, single forward pass
 - EMA: enabled identically for baseline and hybrid
 - TTA: secondary experiment only
 
 ### Baseline
 
-**Existing compact U-Net architecture, re-trained under the corrected procedure (Section 9.1) — the previously recorded 5-epoch checkpoint is not a valid baseline result.**
+**Current controlled `ResNet34UNet` baseline**, trained under the shared
+current procedure (Section 9.1). The earlier compact `CarddUNet` checkpoint is
+historical provenance, not a valid current baseline result.
 
 ### Optional comparator
 
-**YOLO11-seg fine-tuning** (secondary priority, after the primary ablation)
+**YOLO11-seg fine-tuning** (secondary priority, after the primary controlled comparison)
 
 ### Advanced literature/reference architecture
 
@@ -748,15 +772,17 @@ The research contribution is therefore the **design, controlled evaluation, and 
 
 ## 19. Remaining Technical Decisions
 
-These are the genuinely open questions, to be resolved through small feasibility experiments rather than assumption:
+The primary architecture and training decisions are now fixed by the current
+catalogue. The following remain possible secondary ablations, not unresolved
+requirements for the active model:
 
-1. Transformer block count / depth.
-2. Fusion mechanism (concatenation + projection vs. gated fusion).
-3. Input resolution.
-4. Augmentation strength (including whether copy-paste augmentation measurably helps the rarest classes).
-5. Batch size / gradient accumulation, given Colab Pro's available VRAM.
-6. Number of deep-supervision stages (one vs. two).
-7. Whether YOLO11-seg is worth including as an experimental comparator, given remaining time.
+1. Boundary-aware loss as a separate experiment.
+2. Copy-paste or stronger augmentation for the rarest classes.
+3. Test-time augmentation and calibration analysis.
+4. Whether YOLO11-seg is worth including as an optional comparator.
+
+The current RQ2 confidence-honesty operational definition remains open in the
+research plan; it is not resolved by the architecture specification.
 
 These decisions should be driven by:
 
@@ -834,24 +860,34 @@ It is evaluated only as a separate optional ablation.
 
 For traceability, this version adds the following over the original architecture document:
 
-| Area | Upgrade | Rationale |
+| Area | Current decision | Rationale |
 |---|---|---|
-| Encoder | Pretrained ImageNet weights | Baseline's from-scratch encoder is the primary suspect for near-zero IoU on 3 classes |
-| Loss | Dice + Focal (+ optional boundary term) | Directly targets class imbalance and thin-structure classes (crack, scratch) |
-| Decoder | Deep supervision at intermediate stages | Improves small-object recovery, low implementation cost |
-| Output | Confidence/uncertainty head | Drives automatic chatbot clarification without duplicating logic in the LLM layer |
-| Sampling | Class-weighted / oversampled batches | Loss re-weighting alone is often insufficient for classes with only a few hundred instances |
-| Data | Optional tagged copy-paste augmentation for rarest classes | Increases effective sample count for tire flat, crack, lamp broken without collecting new data |
-| Evaluation | TTA + EMA at inference/eval time | Low-cost, architecture-independent accuracy gain; applied identically across compared models |
-| Evaluation | Multi-seed reporting (mean ± std) | Distinguishes real architectural improvement from run-to-run noise on a ~2,800-image training set |
-| Methodology | Corrected baseline requirement | Prevents the ablation from attributing a training-procedure fix to the Transformer component |
-| Product boundary | Classical rule-based image-quality gate, separate from the segmentation model | Keeps bad-photo detection debuggable and independent of the damage model |
-| Scope | Removal of cost/repair-action prediction; removal of per-model reference-image comparison | Aligns with supervisor instructions and avoids dependence on data that does not exist for this project |
+| Encoder | ImageNet-pretrained ResNet34 | Shared encoder for the controlled baseline and hybrid |
+| Loss | 0.50 Dice + 0.50 multiclass Focal (ADR 0013) | Matches the current trainer and deep-supervised run contract |
+| Decoder | Deep supervision at intermediate stages | Shared by both current arms |
+| Output | Softmax confidence and deterministic `low_confidence` flag | Avoids a separate trainable confidence head without calibration labels |
+| Sampling | Class-aware sampling | Makes rare classes visible during training without changing split policy |
+| Data | No copy-paste augmentation in the current run contract | Keeps the existing controlled records interpretable |
+| Evaluation | EMA for validation/checkpoint selection; single-scale inference | Identical evaluation procedure for both current arms |
+| Evaluation | Two available seeds (`42`, `1337`) | Current evidence; not a completed three-seed study |
+| Methodology | Explicit `ResNet34UNet` comparator | Isolates the current hybrid's Transformer/fusion contribution |
+| Product boundary | Classical quality gate, separate from segmentation | Keeps bad-photo detection independent of the damage model |
+| Scope | Cost, repair action, and physical-area claims removed | Aligns with ADR 0011 and available evidence |
 
 ---
 
 ## 21. Final Architecture Statement
 
-> **AutoInspect-X uses a lightweight CNN–Transformer hybrid segmentation architecture in which a pretrained CNN encoder preserves local visual detail while Transformer-based contextual modelling, applied at the bottleneck, captures broader spatial relationships. These representations are fused and decoded — with deep supervision and a boundary-aware loss term — into pixel-level vehicle-damage masks and a per-prediction confidence signal, for six CarDD damage categories. The research evaluates whether the addition of global contextual modelling improves overall and small-damage segmentation performance relative to a properly-trained conventional CNN/U-Net baseline, isolating this effect from general training-procedure corrections through a controlled, multi-seed ablation, while maintaining practical computational efficiency. The calibrated confidence signal, together with a separate classical image-quality gate, drives automatic clarification behavior in the downstream LangChain-based conversational layer.**
+> **AutoInspect-X uses `HybridSegmentation`, in which a pretrained ResNet34
+> encoder preserves local visual detail while a four-block Transformer at the
+> 16×16 bottleneck captures broader spatial relationships. The projected CNN
+> and Transformer features are added and decoded with deep supervision into
+> pixel-level masks for six CarDD damage categories. The current catalogue
+> compares this arm with `ResNet34UNet` under the same two-seed, Dice + Focal
+> contract; it does not establish architecture superiority or a completed
+> multi-seed result. The engine exposes an uncalibrated softmax-derived
+> confidence signal and deterministic low-confidence flag, while a separate
+> classical image-quality gate drives photo-quality clarification.**
 
-This statement should be treated as the current architecture direction until the remaining technical choices in Section 19 are experimentally validated.
+The remaining technical choices in Section 19 are planned follow-up work, not
+claims about the current catalogue.

@@ -134,6 +134,10 @@ def _make_client(
         storage_root=tmp_path / "storage",
         training_root=tmp_path / "training",
         model_path=model_path,
+        # Pinned: an unset model_id would be inherited from a local .env, which
+        # would silently route these cases to the catalogue default engine
+        # instead of the legacy configured-checkpoint path under test.
+        model_id=None,
         model_version=None,
         groq_api_key="sk-test",  # non-empty so the container wants a LangChain assistant
         groq_model="unused-in-tests",

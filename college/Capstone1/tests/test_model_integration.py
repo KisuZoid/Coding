@@ -13,7 +13,7 @@ unavailable" while upload/quality/chat still worked):
 - a missing checkpoint surfacing as ``MODEL_UNAVAILABLE`` with the real
   reason logged server-side.
 
-Tests that need the git-ignored pilot checkpoint or a CarDD dataset image use
+Tests that need the git-ignored active checkpoint or a CarDD dataset image use
 a runtime presence guard and are skipped (never failed) when missing, matching
 ``tests/test_inference_smoke.py``.
 """
@@ -35,11 +35,11 @@ from apps.api.settings import Settings
 from ml.inference.engine import SegmentationEngine
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CHECKPOINT = _REPO_ROOT / "ml" / "experiments" / "pilot15_hybrid" / "best_checkpoint.pt"
+_CHECKPOINT = _REPO_ROOT / "ml" / "experiments" / "final60_hybrid_seed42" / "best_checkpoint.pt"
 _SAMPLE_PHOTO = _REPO_ROOT / "datasets" / "CarDD_COCO" / "test2017" / "000950.jpg"
 
 _skip_no_checkpoint = pytest.mark.skipif(
-    not _CHECKPOINT.is_file(), reason="pilot hybrid checkpoint absent"
+    not _CHECKPOINT.is_file(), reason="active hybrid checkpoint absent"
 )
 _skip_no_photo = pytest.mark.skipif(not _SAMPLE_PHOTO.is_file(), reason="CarDD test photo absent")
 
@@ -58,7 +58,7 @@ def test_norm_path_resolves_against_repo_root_when_cwd_has_no_file(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    relative = Path("ml/experiments/pilot15_hybrid/best_checkpoint.pt")
+    relative = Path("ml/experiments/final60_hybrid_seed42/best_checkpoint.pt")
     assert _norm_path(relative) == _CHECKPOINT
 
 
@@ -94,7 +94,7 @@ def test_engine_loads_hybrid_checkpoint_on_cpu() -> None:
     engine = SegmentationEngine.from_checkpoint(_CHECKPOINT, base=0, device="cpu")
     assert engine.metadata.arch == "HybridSegmentation"
     assert engine.metadata.base == 0
-    assert engine.metadata.epoch == 14
+    assert engine.metadata.epoch == 49
 
 
 # --------------------------------------------------------------------------- #
@@ -142,6 +142,10 @@ def _make_client(tmp_path: Path, *, model_path: Path | None) -> TestClient:
             storage_root=tmp_path / "storage",
             training_root=tmp_path / "training",
             model_path=model_path,
+            # Pinned: these tests exercise the legacy configured-checkpoint route,
+            # which container.model_id_for_session selects only when no catalogue
+            # id is set. Leaving it unset would inherit MODEL_ID from a local .env.
+            model_id=None,
             model_version=None,
             groq_api_key="",
             groq_model="unused-in-tests",
@@ -181,7 +185,7 @@ def test_api_analyze_with_real_engine_returns_structured_json(tmp_path: Path) ->
         meta = body["inspection"]["model_metadata"]
         assert meta["arch"] == "HybridSegmentation"
         assert meta["num_classes"] == 7
-        assert meta["experiment_id"] == "pilot15_hybrid"
+        assert meta["experiment_id"] == "final60_hybrid_seed42"
 
 
 def test_api_missing_checkpoint_is_model_unavailable_and_reason_is_logged(

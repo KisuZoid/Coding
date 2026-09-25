@@ -75,6 +75,7 @@ questionnaire gating are removed:
   `test_agent_graph.py`, `test_inspection_context.py`, `test_api_settings.py`,
   plus `tests/conftest.py` which blanks the Groq key so the suite is
   deterministic and offline.
-- The committed demo checkpoint contract moves to `cardd_hybrid_ce` (see ADR
-  0010); the real-engine journey test skips (not fails) until that artefact is
-  trained.
+- The historical `cardd_hybrid_ce` checkpoint remains archival provenance.
+  ADR 0012 now defines the current five-model catalogue and its selected-model
+  API contract; the real-engine journey tests use the configured catalogue path
+  and do not treat the historical pilot as a current default.

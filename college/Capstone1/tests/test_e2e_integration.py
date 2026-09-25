@@ -3,8 +3,9 @@
 Drives the real HTTP contract the browser uses — session, upload, analyze,
 follow-up chat, state, consent, delete — through one persisted application per
 test (tmp storage roots, offline stub assistant, deterministic stub engine for
-scenario control). One test exercises the committed 15-epoch pilot checkpoint
+scenario control). One test exercises the active controlled hybrid checkpoint
 end-to-end; it is skipped (never failed) when the artifact is absent. No cost
+
 or repair fields exist anywhere in the contracts (asserted per test).
 """
 
@@ -30,7 +31,7 @@ from ml.inference.engine import (
     SegmentationResult,
 )
 
-_CHECKPOINT = Path("ml/experiments/pilot15_hybrid/best_checkpoint.pt")
+_CHECKPOINT = Path("ml/experiments/final60_hybrid_seed42/best_checkpoint.pt")
 
 # Fields that must never appear in a response or persisted state after the
 # cost/repair removal.
@@ -196,9 +197,9 @@ def _assert_no_forbidden_fields(obj: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.skipif(not _CHECKPOINT.is_file(), reason="pilot checkpoint not present")
+@pytest.mark.skipif(not _CHECKPOINT.is_file(), reason="active hybrid checkpoint not present")
 def test_full_journey_happy_path_with_real_engine(tmp_path: Path) -> None:
-    """Browser journey against the 15-epoch pilot engine: photo-first, no cost."""
+    """Browser journey against the active controlled hybrid engine: photo-first, no cost."""
     client = _make_client(tmp_path)
     session_id = _new_session(client)
     _upload(client, session_id, _valid_rgb())

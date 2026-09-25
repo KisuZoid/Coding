@@ -4,8 +4,9 @@ Settings are driven by environment variables (and a local ``.env`` when
 present), matching the names declared in ``.env.example``. No secret value is
 ever logged; ``groq_api_key`` is consumed server-side only.
 
-Model artefacts are never hard-coded: ``model_path`` / ``model_version`` are
-resolved from ``MODEL_PATH`` / ``MODEL_VERSION`` (ADR 0003 / ML guidelines).
+The normal model path is the explicit catalogue in ``model_catalog`` and
+``model_id`` (``MODEL_ID``). ``model_path`` / ``model_version`` remain
+legacy/custom-checkpoint compatibility settings (ADR 0003 / ADR 0012).
 """
 
 from __future__ import annotations
@@ -43,6 +44,7 @@ class Settings(BaseSettings):
     groq_api_key: str = Field(default="", validation_alias="GROQ_AUTO_INSPECT_API_KEY")
     groq_model: str = Field(default="openai/gpt-oss-20b", validation_alias="GROQ_MODEL")
     model_path: Path | None = None
+    model_id: str | None = None
     model_version: str | None = None
 
     # Local storage roots (phases C/K). Supabase/S3/Postgres replace these

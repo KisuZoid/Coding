@@ -75,9 +75,10 @@ future label family must carry its category explicitly (ADR 0004).
 - Never commit checkpoints. Store them outside Git and reference them by version.
 - Every artefact records: training run ID, dataset version, code commit, metric
   summary, and input/output contract.
-- Checkpoints carry a `model_arch` key (`cardd_hybrid` / `cardd_unet`); the
-  inference engine dispatches on it and a mismatch is a loud `ModelVersionError`
-  (ADR 0010). Never guess the architecture of a checkpoint.
+- Checkpoints carry a `model_arch` key (`resnet34_unet` / `hybrid_segmentation`
+  for the current catalogue, with legacy names for archival compatibility); the
+  inference engine dispatches on it and a mismatch is a loud
+  `ModelVersionError`. Never guess the architecture of a checkpoint.
 - Loading a model from an unverified source is a security risk; see `SECURITY.md`.
 
 ## 7. Evaluation
@@ -95,8 +96,9 @@ future label family must carry its category explicitly (ADR 0004).
   low-confidence flag rate and the separation of confidence over agreed vs
   disagreed instances (RQ2) so "low confidence" claims remain falsifiable.
 - Metrics must not leak through overlap: keep the argmax decode identical
-  between loss and evaluation (ADR 0008) and note the overlap limitation on
-  stacked CarDD masks rather than papering over it.
+  between the current Dice + Focal target construction and evaluation (ADR
+  0013), and note the overlap limitation on stacked CarDD masks rather than
+  papering over it.
 - Every reported evaluation records the reproducibility fields: experiment ID,
   dataset version, split policy, seed, commit hash, hyperparameters, and the
   run record (`registry.json`).

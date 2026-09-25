@@ -142,7 +142,7 @@ test.describe("cinematic performance", () => {
     }
 
     // 4. Upward scroll: frame counter must fall, not reset to first frame mid-way.
-    const counterBefore = await page.locator("text=/frame \\d+ \\/ 913/").count();
+    const counterBefore = await page.locator("text=/frame \\d+ \\/ 757/").count();
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.25));
     await page.waitForTimeout(600);
     const frameText = await page.evaluate(() => {
@@ -150,11 +150,11 @@ test.describe("cinematic performance", () => {
       void p;
       // read the frame counter paragraph (last one, fixed bottom-right)
       const ps = [...document.querySelectorAll("p")];
-      const m = ps.map((el) => el.textContent ?? "").find((t) => /frame \d+ \/ 913/.test(t));
+      const m = ps.map((el) => el.textContent ?? "").find((t) => /frame \d+ \/ 757/.test(t));
       return m ?? "";
     });
     const num = parseInt((frameText.match(/frame (\d+) /)?.[1] ?? "0"), 10);
-    expect(num).toBeLessThan(913);
+    expect(num).toBeLessThan(757);
     expect(num).toBeGreaterThan(0);
     expect(counterBefore).toBe(1);
 

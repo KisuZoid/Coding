@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openDemo, COMPOSER_PLACEHOLDER } from "./helpers";
+import { COMPOSER_PLACEHOLDER, expectConnectionOnline, openDemo } from "./helpers";
 
 /**
  * Lightweight responsiveness checks on all viewport projects: the intro and
@@ -11,6 +11,6 @@ test.describe("responsive shell", () => {
     await openDemo(page);
     await expect(page.getByPlaceholder(COMPOSER_PLACEHOLDER)).toBeVisible();
     await expect(page.getByRole("button", { name: "New inspection" })).toBeVisible();
-    await expect(page.getByText("API online")).toBeVisible();
+    await expectConnectionOnline(page);
   });
 });

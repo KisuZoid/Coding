@@ -29,7 +29,10 @@ as working software.
 
 ```
 1. Session creation
-   POST /inspection/session — one session id, owned by the user.
+   POST /inspection/session — one session id, owned by the user; an optional
+   `model_id` must be one of the five catalogue entries. The default is
+   `final60_hybrid_seed42`. The selection is persisted in session state and
+   can be changed with PATCH /inspection/{id}/model before analysis.
 
 2. Photo upload
    POST /inspection/<id>/upload — the photo is validated, EXIF-stripped, and
@@ -40,9 +43,10 @@ as working software.
       rejection the endpoint returns HTTP 200 with
       status="QUALITY_FAILED" and writes the assistant's retake guidance into
       the conversation; no mask is produced and no model inference runs.
-   b. Segmentation — the engine (CarddHybrid by default; dispatch on the
-      checkpoint's model_arch key, ADR 0010) returns per-pixel logits; argmax
-      over background + 6 CarDD classes.
+    b. Segmentation — the selected catalogue engine (default
+       `final60_hybrid_seed42`; dispatch on the checkpoint's `model_arch` key,
+       ADR 0010/0012/0013) returns per-pixel logits; argmax over background + 6
+       CarDD classes.
    c. Evidence payload — classes present, image-denominator area ratios, mean
       confidence, low-confidence flag, quality outcome, model metadata; the
       predicted-mask overlay is stored and served.
@@ -69,12 +73,12 @@ as working software.
 ### Error contract (typed, safe)
 
 The API never collapses distinct failures into one message. `detail` is always
-`{"code": ..., "message": ...}` where `code` ∈ `SESSION_NOT_FOUND`,
-`SESSION_CLOSED`, `SESSION_EXPIRED`, `NO_UPLOADED_PHOTO`, `BAD_UPLOAD`,
-`MODEL_UNAVAILABLE` (engine could not be built), `INFERENCE_FAILED` (forward
-pass failed), `LLM_UNAVAILABLE`. Responses never contain tracebacks, keys, or
-internals; real exceptions are preserved in the backend logs (uvicorn
-`logger.exception`).
+`{"code": ..., "message": ...}` where `code` includes
+`MODEL_NOT_FOUND`, `MODEL_SELECTION_LOCKED`, `MODEL_UNAVAILABLE`,
+`INFERENCE_FAILED`, `SESSION_NOT_FOUND`, `SESSION_CLOSED`,
+`SESSION_EXPIRED`, `NO_UPLOADED_PHOTO`, `BAD_UPLOAD`, and `LLM_UNAVAILABLE`.
+Responses never contain tracebacks, keys, or internals; real exceptions are
+preserved in the backend logs (uvicorn `logger.exception`).
 ```
 
 ### Labelling rules that constrain this logic

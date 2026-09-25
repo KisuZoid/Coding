@@ -76,6 +76,7 @@ function AnalysisBlock({ message }: { message: ChatMessage }) {
   const rows: Array<[string, string]> = [
     ["Detected region", classes.length ? classes.join(" · ") : "None above threshold"],
   ];
+  if (message.model_id) rows.unshift(["Model", message.model_id]);
   if (confidence !== undefined && Number.isFinite(confidence)) {
     rows.push(["Mean confidence", `${(confidence * 100).toFixed(1)}%`]);
   }

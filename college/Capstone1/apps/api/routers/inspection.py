@@ -35,12 +35,16 @@ from apps.api.errors import (
 from apps.api.errors import (
     detail as problem_detail,
 )
+from apps.api.model_catalog import LEGACY_MODEL_ID, UnknownModelError
 from apps.api.shared.schemas import (
     AnalyzeResponse,
     ConsentRequest,
     ConsentResponse,
     InspectionStateResponse,
+    ModelSelectionRequest,
+    ModelSelectionResponse,
     SessionCreated,
+    SessionCreateRequest,
     UploadResponse,
 )
 from apps.api.storage.records import ConsentDecision, ImageKind, SessionStatus
@@ -89,17 +93,59 @@ def _save_state(c: Container, session_id: str, state: dict[str, Any]) -> None:
 
 
 @router.post("/session", response_model=SessionCreated)
-def create_session(request: Request) -> SessionCreated:
+def create_session(
+    request: Request,
+    body: SessionCreateRequest | None = None,
+) -> SessionCreated:
     c = _container(request)
+    requested = body.model_id if body is not None else None
+    if requested == LEGACY_MODEL_ID:
+        _raise(problem(404, APIErrorCode.MODEL_NOT_FOUND, "model not found"))
+    try:
+        model_id = c.model_id_for_session(requested)
+    except UnknownModelError:
+        _raise(problem(404, APIErrorCode.MODEL_NOT_FOUND, "model not found"))
     session_id = uuid.uuid4().hex
     record = c.sessions.create(session_id)
-    _save_state(c, session_id, {"session_id": session_id, "messages": []})
+    _save_state(
+        c,
+        session_id,
+        {"session_id": session_id, "messages": [], "model_id": model_id},
+    )
     return SessionCreated(
         session_id=record.session_id,
         status=record.status.value,
         created_at=record.created_at.isoformat(),
         expires_at=record.expires_at.isoformat() if record.expires_at else "",
+        model_id=model_id,
     )
+
+
+@router.patch("/{session_id}/model", response_model=ModelSelectionResponse)
+def select_model(
+    session_id: str,
+    request: Request,
+    body: ModelSelectionRequest,
+) -> ModelSelectionResponse:
+    c = _valid_session(request, session_id)
+    if body.model_id == LEGACY_MODEL_ID:
+        _raise(problem(404, APIErrorCode.MODEL_NOT_FOUND, "model not found"))
+    try:
+        model_id = c.model_id_for_session(body.model_id)
+    except UnknownModelError:
+        _raise(problem(404, APIErrorCode.MODEL_NOT_FOUND, "model not found"))
+    state = _load_state(c, session_id)
+    if state.get("inspection") is not None:
+        _raise(
+            problem(
+                409,
+                APIErrorCode.MODEL_SELECTION_LOCKED,
+                "model selection is locked after analysis",
+            )
+        )
+    state["model_id"] = model_id
+    _save_state(c, session_id, state)
+    return ModelSelectionResponse(session_id=session_id, model_id=model_id)
 
 
 @router.post("/{session_id}/upload", response_model=UploadResponse)
@@ -146,6 +192,7 @@ def _llm_explanation(c: Container, evidence: dict[str, Any]) -> tuple[str, bool]
 def analyze_photo(session_id: str, request: Request) -> AnalyzeResponse:
     c = _valid_session(request, session_id)
     state = _load_state(c, session_id)
+    model_id = state.get("model_id") or c.model_id_for_session()
     asset_id = state.get("image_asset_id")
     asset = c.images.get(asset_id) if asset_id else None
     if asset is None:
@@ -180,6 +227,7 @@ def analyze_photo(session_id: str, request: Request) -> AnalyzeResponse:
         return AnalyzeResponse(
             session_id=session_id,
             status="QUALITY_FAILED",
+            model_id=model_id,
             assistant_message=guidance,
             assistant_fallback=fallback,
             asset_id=asset.asset_id,
@@ -188,7 +236,7 @@ def analyze_photo(session_id: str, request: Request) -> AnalyzeResponse:
         )
 
     try:
-        engine = c.engine()
+        engine = c.engine(model_id)
     except ModelLoadError as exc:
         logger.exception("segmentation engine unavailable (MODEL_UNAVAILABLE): %s", exc)
         _raise(problem(500, APIErrorCode.MODEL_UNAVAILABLE, "model unavailable"))
@@ -239,6 +287,7 @@ def analyze_photo(session_id: str, request: Request) -> AnalyzeResponse:
     return AnalyzeResponse(
         session_id=session_id,
         status="OK",
+        model_id=model_id,
         assistant_message=explanation,
         assistant_fallback=fallback,
         asset_id=asset.asset_id,

@@ -23,7 +23,7 @@ test.describe("cinematic intro", () => {
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight * 0.5));
     await page.waitForTimeout(600); // allow rAF to settle
     if ((page.viewportSize()?.width ?? 0) >= 640) {
-      const counter = page.locator("text=/frame \\d+ \\/ 913/");
+      const counter = page.locator("text=/frame \\d+ \\/ 757/");
       await expect(counter).toBeVisible({ timeout: 5_000 });
     }
 
