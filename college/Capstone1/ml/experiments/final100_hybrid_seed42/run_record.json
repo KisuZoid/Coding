@@ -1,0 +1,114 @@
+{
+  "experiment_id": "final100_hybrid_seed42",
+  "config": {
+    "data_root": "/content/data/CarDD_COCO",
+    "split": "train2017",
+    "model_arch": "hybrid_segmentation",
+    "epochs": 100,
+    "batch_size": 4,
+    "grad_accum": 1,
+    "base": 0,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.0003,
+    "weight_decay": 0.0001,
+    "warmup_epochs": 5,
+    "min_lr": 1e-06,
+    "patience": 100,
+    "ema_decay": 0.999,
+    "train_limit": null,
+    "val_limit": null,
+    "augment_train": true,
+    "class_sampling": true,
+    "pretrained": true,
+    "pretrained_path": null,
+    "freeze_encoder_bn": true,
+    "checkpoint_every": 5,
+    "seed": 42,
+    "num_workers": 2,
+    "experiment_label": "final100_hybrid_seed42",
+    "resume": "/content/drive/MyDrive/AutoInspectX/experiments/final60_hybrid_seed42/best_checkpoint.pt"
+  },
+  "dataset": "CarDD-COCO official splits",
+  "model": "hybrid_segmentation num_classes=7 params=27933661",
+  "device": "cuda",
+  "git_revision": "591d7d2",
+  "class_weights": {
+    "2": 0.5078675179350047,
+    "6": 0.7731588315840768,
+    "3": 3.131378569609344,
+    "1": 0.5036207991640327,
+    "5": 0.6854985236138926,
+    "4": 0.3984757580936496
+  },
+  "background_weight": 0.1,
+  "class_sampling": true,
+  "effective_batch_size": 4,
+  "peak_vram_mb": null,
+  "best_val_foreground_miou": 0.6715497970581055,
+  "best_epoch": 58,
+  "early_stopped_at": null,
+  "completed": false,
+  "record_status": "PARTIAL_RECONSTRUCTED_FROM_CHECKPOINTS",
+  "provenance": {
+    "best_checkpoint": "best_checkpoint.pt",
+    "periodic_checkpoints_observed": [
+      "periodic_epoch_0054.pt",
+      "periodic_epoch_0059.pt",
+      "periodic_epoch_0064.pt",
+      "periodic_epoch_0069.pt",
+      "periodic_epoch_0074.pt",
+      "periodic_epoch_0079.pt",
+      "periodic_epoch_0084.pt"
+    ],
+    "observed_epoch_range": [54, 84],
+    "missing_fields": [
+      "complete epoch history",
+      "training metrics for the continuation",
+      "termination reason"
+    ]
+  },
+  "epochs_detail": [
+    {
+      "epoch": 58,
+      "val": {
+        "foreground_miou": 0.6715497970581055,
+        "foreground_mdice": 0.7861893773078918,
+        "pixel_accuracy": 0.9250539049690152,
+        "per_class": {
+          "0": {
+            "iou": 0.9116641879081726,
+            "dice": 0.9537912011146545
+          },
+          "1": {
+            "iou": 0.5274956226348877,
+            "dice": 0.6906673312187195
+          },
+          "2": {
+            "iou": 0.5773541927337646,
+            "dice": 0.7320539951324463
+          },
+          "3": {
+            "iou": 0.37124210596084595,
+            "dice": 0.5414683818817139
+          },
+          "4": {
+            "iou": 0.9428311586380005,
+            "dice": 0.9705744981765747
+          },
+          "5": {
+            "iou": 0.7538761496543884,
+            "dice": 0.8596686124801636
+          },
+          "6": {
+            "iou": 0.8564994931221008,
+            "dice": 0.922703742980957
+          }
+        },
+        "n_pixels": 212336640.0
+      },
+      "source": "best_checkpoint.pt"
+    }
+  ],
+  "ema_decay": 0.999,
+  "note": "The run record was reconstructed from the best checkpoint and periodic checkpoint metadata. The continuation is not evidence of a completed 100-epoch run."
+}
